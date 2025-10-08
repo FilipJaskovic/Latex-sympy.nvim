@@ -2,72 +2,17 @@
 
 Parse LaTeX math and compute results using SymPy, directly from Neovim. This is a port of the VS Code extension "Latex Sympy Calculator" to Neovim.
 
-| <!-- --> | <!-- --> |
-|--------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Build Status | [![unittests](https://img.shields.io/github/actions/workflow/status/ColinKennedy/nvim-best-practices-plugin-template/test.yml?branch=main&style=for-the-badge&label=Unittests)](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/actions/workflows/test.yml) [![documentation](https://img.shields.io/github/actions/workflow/status/ColinKennedy/nvim-best-practices-plugin-template/documentation.yml?branch=main&style=for-the-badge&label=Documentation)](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/actions/workflows/documentation.yml) [![luacheck](https://img.shields.io/github/actions/workflow/status/ColinKennedy/nvim-best-practices-plugin-template/luacheck.yml?branch=main&style=for-the-badge&label=Luacheck)](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/actions/workflows/luacheck.yml) [![llscheck](https://img.shields.io/github/actions/workflow/status/ColinKennedy/nvim-best-practices-plugin-template/llscheck.yml?branch=main&style=for-the-badge&label=llscheck)](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/actions/workflows/llscheck.yml) [![checkhealth](https://img.shields.io/github/actions/workflow/status/ColinKennedy/nvim-best-practices-plugin-template/checkhealth.yml?branch=main&style=for-the-badge&label=checkhealth)](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/actions/workflows/checkhealth.yml) [![stylua](https://img.shields.io/github/actions/workflow/status/ColinKennedy/nvim-best-practices-plugin-template/stylua.yml?branch=main&style=for-the-badge&label=Stylua)](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/actions/workflows/stylua.yml) [![urlchecker](https://img.shields.io/github/actions/workflow/status/ColinKennedy/nvim-best-practices-plugin-template/urlchecker.yml?branch=main&style=for-the-badge&label=URLChecker)](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/actions/workflows/urlchecker.yml) [![mdformat](https://img.shields.io/github/actions/workflow/status/ColinKennedy/nvim-best-practices-plugin-template/mdformat.yml?branch=main&style=for-the-badge&label=mdformat)](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/actions/workflows/mdformat.yml) |
-| License | [![License-MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/blob/main/LICENSE) |
-| Social | [![RSS](https://img.shields.io/badge/rss-F88900?style=for-the-badge&logo=rss&logoColor=white)](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/commits/main/doc/news.txt.atom) |
-
-# Features
-
-- Follows [nvim-best-practices](https://github.com/nvim-neorocks/nvim-best-practices)
-- Fast start-up (~1 ms)
-- Auto-release to [luarocks](https://luarocks.org) & [GitHub](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/releases)
-- Automated user documentation (using [panvimdoc](https://github.com/kdheepak/panvimdoc))
-- Automated API documentation (using [mini.doc](https://github.com/echasnovski/mini.doc))
-- Automated HTML documentation + self-publishing using [emmylua_doc_cli](https://github.com/CppCXY/emmylua-analyzer-rust/tree/main/crates/emmylua_doc_cli) & [mkdocs-material](https://github.com/squidfunk/mkdocs-material)
-  - Yes, this repository has a website! Check it out at [nvim-best-practices-plugin-template](https://colinkennedy.github.io/nvim-best-practices-plugin-template)!
-- Vimtags generation
-- Built-in Vim commands
-- A high quality command mode parser
-- Auto-completes your commands at any cursor position
-- No external dependencies[\*](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/wiki/External-Dependencies-Disclaimer)
-- [LuaCATS](https://luals.github.io/wiki/annotations/) annotations and type-hints, everywhere
-- [RSS feed support](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/commits/main/doc/news.txt.atom)
-- Built-in logging to stdout / files
-- Unittests use the full power of native [busted](https://github.com/lunarmodules/busted)
-  - Supports [LuaCov](https://luarocks.org/modules/mpeterv/luacov) for coverage reports!
-- Automated testing matrix supports 12 Neovim/OS combinations
-  - neovim: `[v0.10.0, v0.11.0, stable, nightly]`
-  - os: `[ubuntu-latest, macos-latest, windows-latest]`
-- 100% Lua
-- Uses [Semantic Versioning](https://semver.org)
-- Integrations
-  - [lualine.nvim](https://github.com/nvim-lualine/lualine.nvim)
-  - [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
-  - [`:checkhealth`](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/actions/workflows/checkhealth.yml)
-- Github actions for:
-  - [StyLua](https://github.com/JohnnyMorganz/StyLua) - Auto-formats Lua code
-  - [llscheck](https://github.com/jeffzi/llscheck) - Checks for Lua type mismatches
-  - [luacheck](https://github.com/mpeterv/luacheck) - Checks for Lua code issues
-  - [luarocks](https://luarocks.org) auto-release ([LUAROCKS_API_KEY secret](https://github.com/nvim-neorocks/sample-luarocks-plugin?tab=readme-ov-file#publishing-to-luarocks) configuration required)
-  - [GitHub](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/releases) auto-release ([PERSONAL_ACCESS_TOKEN secret](https://github.com/nvim-neorocks/sample-luarocks-plugin?tab=readme-ov-file#installing-release-please-recommended) configuration required)
-  - [mdformat](https://github.com/hukkin/mdformat) - Auto-formats project Markdown files
-  - [mini.doc](https://github.com/echasnovski/mini.doc) - API documentation auto-generator
-  - [panvimdoc](https://github.com/kdheepak/panvimdoc) - User documentation auto-generator
-  - [emmylua_doc_cli](https://github.com/CppCXY/emmylua-analyzer-rust/tree/main/crates/emmylua_doc_cli) & [mkdocs-material](https://github.com/squidfunk/mkdocs-material) - Generate HTML from Lua files automatically
-  - [urlchecker](https://github.com/urlstechie/urlchecker-action) - Checks for broken URL links
-  - PR reviews - Reminds users to update `doc/news.txt`
-
-# Using This Template
-
-1. Follow the [Wiki instructions](https://github.com/ColinKennedy/nvim-best-practices-plugin-template/wiki/Using-This-Template)
-1. Run `make download-dependencies` so all the Lua LSP features work as expected.
-1. Once you're done, remove this section (the rest of this README.md file should be kept / customized to your needs)
-
 ## Installation
 
-<!-- TODO: (you) - Adjust and add your dependencies as needed here -->
-
-- [lazy.nvim](https://github.com/folke/lazy.nvim)
+- lazy.nvim
 
 ```lua
 {
-  dir = "/path/to/Latex-Sympy-Calculator-main/Latex-sympy.nvim",
+  dir = "/path/to/Latex-sympy.nvim",
   config = function()
     require("latex_sympy").setup({
-      python = "python3",     -- or an absolute path
-      auto_install = true,     -- auto `pip install --upgrade latex2sympy2 Flask`
+      python = "python3",   -- or an absolute path
+      auto_install = true,   -- auto `pip install --upgrade latex2sympy2 Flask`
       port = 7395,
     })
   end,
@@ -93,11 +38,7 @@ python3 -m pip install --upgrade latex2sympy2 Flask
 
 ## Configuration
 
-(These are default values)
-
-<!-- TODO: (you) - Remove / Add / Adjust your configuration here -->
-
-- [lazy.nvim](https://github.com/folke/lazy.nvim)
+(Default values)
 
 ```lua
 require("latex_sympy").setup({
@@ -107,102 +48,39 @@ require("latex_sympy").setup({
 })
 ```
 
-## Lualine
-
-<!-- TODO: (you) - Remove this is you do not want lualine -->
-
-> Note: You can customize lualine colors here or using
-> `vim.g.plugin_template_configuration`.
-
-[lualine.nvim](https://github.com/nvim-lualine/lualine.nvim)
-
-```lua
-require("lualine").setup {
-    sections = {
-        lualine_y = {
-            -- ... Your other configuration ...
-            {
-                "plugin_template",
-                -- NOTE: These will override default values
-                -- display = {
-                --     goodnight_moon = {color={fg="#FFFFFF"}, text="Custom message 1"}},
-                --     hello_world = {color={fg="#333333"}, text="Custom message 2"},
-                -- },
-            },
-        }
-    }
-}
-```
-
-## Telescope
-
-<!-- TODO: (you) - Remove this is you do not want telescope -->
-
-> Note: You can customize telescope colors here or using
-> `vim.g.plugin_template_configuration`.
-
-[telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
-
-```lua
-{
-    "nvim-telescope/telescope.nvim",
-    cmd = "Telescope",
-    config = function()
-        -- ... Your other configuration ...
-        require("telescope").load_extension("plugin_template")
-    end,
-    dependencies = {
-        "ColinKennedy/nvim-best-practices-plugin-template",
-        "nvim-lua/plenary.nvim",
-    },
-    version = "0.1.*",
-},
-```
-
-### Colors
-
-This plugin provides two default highlights
-
-- `PluginTemplateTelescopeEntry`
-- `PluginTemplateTelescopeSecondary`
-
-Both come with default colors that should look nice. If you want to change them, here's how:
-
-```lua
-vim.api.nvim_set_hl(0, "PluginTemplateTelescopeEntry", {link="Statement"})
-vim.api.nvim_set_hl(0, "PluginTemplateTelescopeSecondary", {link="Question"})
-```
-
 ## Commands
 
 All commands work on the current visual selection or a given `:<range>` of lines when applicable:
 
 ```vim
-:LatexSympyEqual        " Append " = <result>" after selection
-:LatexSympyReplace      " Replace selection with LaTeX result
-:LatexSympyNumerical    " Replace selection with numerical value
-:LatexSympyFactor       " Replace selection with factored form
-:LatexSympyExpand       " Replace selection with expanded form
-:LatexSympyMatrixRREF   " Append " \to <rref>" after matrix selection
-:LatexSympyVariances    " Insert current variances mapping at cursor
-:LatexSympyReset        " Reset current variances
-:LatexSympyToggleComplex" Toggle complex-number support for variances
-:LatexSympyPython       " Evaluate Python snippet; append result
+:LatexSympyEqual         " Append " = <result>" after selection
+:LatexSympyReplace       " Replace selection with LaTeX result
+:LatexSympyNumerical     " Replace selection with numerical value
+:LatexSympyFactor        " Replace selection with factored form
+:LatexSympyExpand        " Replace selection with expanded form
+:LatexSympyMatrixRREF    " Append " \to <rref>" after matrix selection
+:LatexSympyVariances     " Insert current variances mapping at cursor
+:LatexSympyReset         " Reset current variances
+:LatexSympyToggleComplex " Toggle complex-number support for variances
+:LatexSympyPython        " Evaluate Python snippet; append result
+
+:LatexSympyStatus        " Show current server/config status
+:LatexSympyRestart       " Restart the Python server
+:LatexSympyStart         " Start the Python server
+:LatexSympyStop          " Stop the Python server
 ```
 
-## Notes
+## Development
 
-## Initialization
+### Initialization
 
-Run this line once before calling any `busted` command
+Run this line once before calling any `busted` command:
 
 ```sh
 eval $(luarocks path --lua-version 5.1 --bin)
 ```
 
-## Running
-
-Run all tests
+### Running tests
 
 ```sh
 # Using the package manager
@@ -213,30 +91,7 @@ busted .
 make test
 ```
 
-Run test based on tags
-
-```sh
-busted . --tags=simple
-```
-
-# Coverage
-
-Making sure that your plugin is well tested is important.
-`nvim-best-practices-plugin-template` can generate a per-line breakdown of exactly where
-your code is lacking tests using [LuaCov](https://luarocks.org/modules/mpeterv/luacov).
-
-## Setup
-
-Make sure to install all dependencies for the unittests + coverage reporter if
-you have not installed them already.
-
-```sh
-luarocks install busted --local
-luarocks install luacov --local
-luarocks install luacov-multiple --local
-```
-
-## Running
+### Coverage
 
 ```sh
 make coverage-html
@@ -244,37 +99,82 @@ make coverage-html
 
 This will generate a `luacov.stats.out` & `luacov_html/` directory.
 
-## Viewing
+To view:
 
 ```sh
 (cd luacov_html && python -m http.server)
 ```
 
-If it worked, you should see a message like
-`"Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000) ..."`
-Open `http://0.0.0.0:8000` in a browser like
-[Firefox](https://www.mozilla.org/en-US/firefox) and you should see a view like this:
+## Quickstart
 
-![Image](https://github.com/user-attachments/assets/e5b30df8-036a-4886-81b9-affbf5c9e32a)
+1. Open a buffer with LaTeX math (e.g. `x^2 + 2x + 1`).
+2. Select the text (visual mode) or use a `:<range>`.
+3. Run `:LatexSympyEqual` to append `= <result>` or `:LatexSympyReplace` to replace selection.
 
-Just navigate down a few folders until you get to a .lua file and you'll see a breakdown
-of your line coverage like this:
+Tip: For matrices, select the full matrix and run `:LatexSympyMatrixRREF` to append `\to <rref>`.
 
-![Image](https://github.com/user-attachments/assets/c5420b16-4be7-4177-92c7-01af0b418816)
+## Keymaps (examples)
 
-### Tracking Updates
-
-See [doc/news.txt](doc/news.txt) for updates.
-
-You can watch this plugin for changes by adding this URL to your RSS feed:
-
+```lua
+-- Visual: append result
+vim.keymap.set('v', '<leader>le', ':<C-u>LatexSympyEqual<CR>', { desc = 'latex_sympy equal' })
+-- Visual: replace with result
+vim.keymap.set('v', '<leader>lr', ':<C-u>LatexSympyReplace<CR>', { desc = 'latex_sympy replace' })
+-- Visual: numerical value
+vim.keymap.set('v', '<leader>ln', ':<C-u>LatexSympyNumerical<CR>', { desc = 'latex_sympy numerical' })
+-- Visual: factor / expand
+vim.keymap.set('v', '<leader>lf', ':<C-u>LatexSympyFactor<CR>', { desc = 'latex_sympy factor' })
+vim.keymap.set('v', '<leader>lx', ':<C-u>LatexSympyExpand<CR>', { desc = 'latex_sympy expand' })
+-- Visual: matrix RREF
+vim.keymap.set('v', '<leader>lm', ':<C-u>LatexSympyMatrixRREF<CR>', { desc = 'latex_sympy rref' })
+-- Normal: utilities
+vim.keymap.set('n', '<leader>ls', '<cmd>LatexSympyStatus<CR>', { desc = 'latex_sympy status' })
+vim.keymap.set('n', '<leader>lS', '<cmd>LatexSympyRestart<CR>', { desc = 'latex_sympy restart' })
 ```
-https://github.com/ColinKennedy/nvim-best-practices-plugin-template/commits/main/doc/news.txt.atom
-```
 
-# Other Plugins
+## Health
 
-This template is full of various features. But if your plugin is only meant to
-be a simple plugin and you don't want the bells and whistles that this template
-provides, consider instead using
-[nvim-plugin-template](https://github.com/ellisonleao/nvim-plugin-template)
+- Run `:checkhealth latex_sympy` to verify prerequisites:
+  - python3 found
+  - latex2sympy2 installed
+  - Flask installed
+  - curl found (used for HTTP requests)
+  - Current plugin configuration
+
+## Troubleshooting
+
+- Server won’t start
+  - Run `:LatexSympyStatus` to see status.
+  - Check `:checkhealth latex_sympy` for missing dependencies.
+  - Try `:LatexSympyRestart`.
+- Port already in use
+  - Change `port` in `setup({ port = 7395 })` and restart: `:LatexSympyRestart`.
+- python3 not found or wrong version
+  - Set `python` in setup to an absolute path (e.g. a venv): `setup({ python = "/path/to/venv/bin/python" })`.
+- pip install failures
+  - Set `auto_install = false` and install manually: `pip install latex2sympy2 Flask`.
+- curl missing
+  - Install curl (macOS: `brew install curl`), or replace curl with another HTTP client in your environment.
+
+## Security
+
+- `:LatexSympyPython` evaluates arbitrary Python code in your configured interpreter. Only run trusted code.
+
+## Configuration Reference
+
+| Option       | Type    | Default    | Description                             |
+|--------------|---------|------------|-----------------------------------------|
+| `python`     | string  | `"python3"` | Path to Python interpreter               |
+| `auto_install` | boolean | `true`      | Auto `pip install --upgrade` deps        |
+| `port`       | number  | `7395`     | HTTP server port                         |
+
+## FAQ
+
+- Disable autostart?
+  - This plugin autostarts by default. You can lazy-load it (e.g., load on a command or key) so `setup()` runs later, or call `:LatexSympyStop` after startup.
+- Change port?
+  - Set `port` in `setup` and run `:LatexSympyRestart`.
+- Restart the server?
+  - `:LatexSympyRestart`.
+- Use an external Python env/venv?
+  - Point `python` to the desired interpreter path in `setup`.

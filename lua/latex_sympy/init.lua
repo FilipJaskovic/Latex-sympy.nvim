@@ -6,6 +6,23 @@ local server_port = 7395
 local python_path = "python3"
 local auto_install = true
 local plugin_dir = nil
+local current_config = {
+  python = python_path,
+  auto_install = auto_install,
+  port = server_port,
+}
+
+-- Minimal logging wrapper
+local LOG = {}
+function LOG.info(message)
+  vim.notify("latex_sympy: " .. tostring(message), vim.log.levels.INFO)
+end
+function LOG.warn(message)
+  vim.notify("latex_sympy: " .. tostring(message), vim.log.levels.WARN)
+end
+function LOG.error(message)
+  vim.notify("latex_sympy: " .. tostring(message), vim.log.levels.ERROR)
+end
 
 local function json_encode(tbl)
   if vim.json and vim.json.encode then
@@ -154,15 +171,42 @@ end
 
 function M.setup(opts)
   opts = opts or {}
-  python_path = opts.python or python_path
-  auto_install = opts.auto_install ~= false
-  server_port = opts.port or server_port
+  local new_python = opts.python or python_path
+  local new_auto_install = opts.auto_install ~= false
+  local new_port = opts.port or server_port
+
+  local must_restart = false
+  if server_job_id and server_job_id > 0 then
+    must_restart = (new_python ~= python_path) or (new_port ~= server_port)
+  end
+
+  python_path = new_python
+  auto_install = new_auto_install
+  server_port = new_port
+
+  current_config = {
+    python = python_path,
+    auto_install = auto_install,
+    port = server_port,
+  }
 
   if auto_install then
     system_async(python_path, { "-m", "pip", "install", "--upgrade", "latex2sympy2", "Flask" }, function(_, _, _) end)
   end
 
-  M.start_server()
+  if must_restart then
+    M.restart_server()
+  else
+    M.start_server()
+  end
+end
+
+function M.get_config()
+  return {
+    python = python_path,
+    auto_install = auto_install,
+    port = server_port,
+  }
 end
 
 function M.start_server()
@@ -172,15 +216,16 @@ function M.start_server()
   local root = detect_plugin_dir()
   local server_path = vim.fn.fnamemodify(root .. "/server.py", ":p")
   if not vim.loop.fs_stat(server_path) then
-    vim.notify("latex_sympy: server.py not found at " .. server_path, vim.log.levels.ERROR)
+    LOG.error("server.py not found at " .. server_path)
     return
   end
   server_job_id = vim.fn.jobstart({ python_path, server_path }, {
     cwd = root,
+    env = { LATEX_SYMPY_PORT = tostring(server_port) },
     on_stderr = function(_, data)
       if data and #data > 0 then
         vim.schedule(function()
-          vim.notify("latex_sympy (server stderr): " .. table.concat(data, "\n"), vim.log.levels.WARN)
+          LOG.warn("server stderr: " .. table.concat(data, "\n"))
         end)
       end
     end,
@@ -188,13 +233,13 @@ function M.start_server()
       server_job_id = nil
       if code ~= 0 then
         vim.schedule(function()
-          vim.notify("latex_sympy: Python server exited (code " .. tostring(code) .. ")", vim.log.levels.ERROR)
+          LOG.error("Python server exited (code " .. tostring(code) .. ")")
         end)
       end
     end,
   })
   if server_job_id <= 0 then
-    vim.notify("latex_sympy: failed to start Python server", vim.log.levels.ERROR)
+    LOG.error("failed to start Python server")
   end
 end
 
@@ -205,70 +250,78 @@ function M.stop_server()
   end
 end
 
+function M.restart_server()
+  M.stop_server()
+  vim.defer_fn(function()
+    M.start_server()
+    LOG.info("Server restarted")
+  end, 50)
+end
+
 -- Commands
 
 function M.equal(opts)
   local rng, err = get_visual_range_or_lines(opts)
   if not rng then
-    vim.notify(err, vim.log.levels.ERROR)
+    LOG.error(err)
     return
   end
   post("/latex", rng.text, function(data)
     insert_after_range(rng, " = " .. tostring(data))
   end, function(e)
-    vim.notify(e, vim.log.levels.ERROR)
+    LOG.error(e)
   end)
 end
 
 function M.replace(opts)
   local rng, err = get_visual_range_or_lines(opts)
   if not rng then
-    vim.notify(err, vim.log.levels.ERROR)
+    LOG.error(err)
     return
   end
   post("/latex", rng.text, function(data)
     replace_range(rng, tostring(data))
   end, function(e)
-    vim.notify(e, vim.log.levels.ERROR)
+    LOG.error(e)
   end)
 end
 
 function M.numerical(opts)
   local rng, err = get_visual_range_or_lines(opts)
   if not rng then
-    vim.notify(err, vim.log.levels.ERROR)
+    LOG.error(err)
     return
   end
   post("/numerical", rng.text, function(data)
     replace_range(rng, tostring(data))
   end, function(e)
-    vim.notify(e, vim.log.levels.ERROR)
+    LOG.error(e)
   end)
 end
 
 function M.factor(opts)
   local rng, err = get_visual_range_or_lines(opts)
   if not rng then
-    vim.notify(err, vim.log.levels.ERROR)
+    LOG.error(err)
     return
   end
   post("/factor", rng.text, function(data)
     replace_range(rng, tostring(data))
   end, function(e)
-    vim.notify(e, vim.log.levels.ERROR)
+    LOG.error(e)
   end)
 end
 
 function M.expand(opts)
   local rng, err = get_visual_range_or_lines(opts)
   if not rng then
-    vim.notify(err, vim.log.levels.ERROR)
+    LOG.error(err)
     return
   end
   post("/expand", rng.text, function(data)
     replace_range(rng, tostring(data))
   end, function(e)
-    vim.notify(e, vim.log.levels.ERROR)
+    LOG.error(e)
   end)
 end
 
@@ -279,9 +332,9 @@ function M.matrix_rref(opts)
     return
   end
   post("/matrix-raw-echelon-form", rng.text, function(data)
-    insert_after_range(rng, " \\	o " .. tostring(data))
+    insert_after_range(rng, " \\\\to " .. tostring(data))
   end, function(e)
-    vim.notify(e, vim.log.levels.ERROR)
+    LOG.error(e)
   end)
 end
 
@@ -303,18 +356,18 @@ end
 
 function M.reset()
   get("/reset", function(_)
-    vim.notify("latex_sympy: Reset current variances", vim.log.levels.INFO)
+    LOG.info("Reset current variances")
   end, function(e)
-    vim.notify(e, vim.log.levels.ERROR)
+    LOG.error(e)
   end)
 end
 
 function M.toggle_complex()
   get("/complex", function(res)
     local value = (res and res.value) and "On" or "Off"
-    vim.notify("latex_sympy: Toggle Complex Number to " .. value, vim.log.levels.INFO)
+    LOG.info("Toggle Complex Number to " .. value)
   end, function(e)
-    vim.notify(e, vim.log.levels.ERROR)
+    LOG.error(e)
   end)
 end
 
@@ -327,8 +380,20 @@ function M.python(opts)
   http_request("POST", "/python", rng.text, function(data)
     insert_after_range(rng, " = " .. tostring(data))
   end, function(e)
-    vim.notify(e, vim.log.levels.ERROR)
+    LOG.error(e)
   end)
+end
+
+-- Show current status/config
+function M.status()
+  local running = server_job_id and server_job_id > 0
+  local lines = {
+    string.format("Server: %s", running and "Running" or "Stopped"),
+    string.format("Port: %s", tostring(server_port)),
+    string.format("Python: %s", tostring(python_path)),
+    string.format("Auto install: %s", tostring(auto_install)),
+  }
+  LOG.info(table.concat(lines, "\n"))
 end
 
 return M

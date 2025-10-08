@@ -3,6 +3,13 @@ local latex_sympy = require("latex_sympy")
 -- Autostart server on startup with defaults; users can call setup() in their config to override
 latex_sympy.setup()
 
+vim.api.nvim_create_autocmd("VimLeavePre", {
+  callback = function()
+    pcall(latex_sympy.stop_server)
+  end,
+  desc = "Stop latex_sympy server on exit",
+})
+
 -- User commands
 vim.api.nvim_create_user_command("LatexSympyEqual", function(opts)
   latex_sympy.equal(opts)
@@ -43,5 +50,21 @@ end, { desc = "Toggle complex numbers for variances" })
 vim.api.nvim_create_user_command("LatexSympyPython", function(opts)
   latex_sympy.python(opts)
 end, { range = true, desc = "Evaluate Python snippet and append = <result>" })
+
+vim.api.nvim_create_user_command("LatexSympyStatus", function()
+  latex_sympy.status()
+end, { desc = "Show latex_sympy server/config status" })
+
+vim.api.nvim_create_user_command("LatexSympyRestart", function()
+  latex_sympy.restart_server()
+end, { desc = "Restart the latex_sympy Python server" })
+
+vim.api.nvim_create_user_command("LatexSympyStart", function()
+  latex_sympy.start_server()
+end, { desc = "Start the latex_sympy Python server" })
+
+vim.api.nvim_create_user_command("LatexSympyStop", function()
+  latex_sympy.stop_server()
+end, { desc = "Stop the latex_sympy Python server" })
 
 

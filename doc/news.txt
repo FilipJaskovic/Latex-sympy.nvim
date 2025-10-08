@@ -1,16 +1,17 @@
-*plugin-template-news.txt*
+*latex-sympy-news.txt*
 
-Notable changes since PluginTemplate 1.10
+Notable changes
+
+===============================================================================
+Initial release                                     *latex-sympy-new-features*
+
+- Basic LaTeX -> SymPy evaluation
+- Numerical, factor, expand, RREF, Python eval endpoints
+- Variances map, reset, toggle complex
 
 
 ===============================================================================
-NEW FEATURES                                     *plugin-template-new-features*
-
-- Added `mdformat` support for auto-formatting Markdown files!
-
-
-===============================================================================
-BREAKING CHANGES                                 *plugin-template-new-breaking*
+BREAKING CHANGES                                 *latex-sympy-breaking*
 
 n/a
 

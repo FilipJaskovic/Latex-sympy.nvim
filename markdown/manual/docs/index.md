@@ -1,4 +1,5 @@
-This website was generated automatically using
-a fancy Lua -> Markdown -> HTML translator. See
-[nvim-best-practices-plugin-template](https://github.com/ColinKennedy/nvim-best-practices-plugin-template)
-for details!
+This site was generated automatically.
+
+- Project: Latex Sympy Calculator (Neovim)
+- Commands: see README.md `Commands` section
+- Development: see README.md `Development` section

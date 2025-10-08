@@ -1,5 +1,6 @@
 from flask import Flask, request
 import json
+import os
 import latex2sympy2
 import sympy
 from sympy.abc import *
@@ -131,7 +132,8 @@ def run_python():
 
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=7395)
+    port = int(os.getenv('LATEX_SYMPY_PORT', '7395'))
+    app.run(host='127.0.0.1', port=port)
     
     
 
