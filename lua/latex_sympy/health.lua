@@ -30,9 +30,11 @@ function M.check()
     auto_install = false,
     port = 7395,
     enable_python_eval = false,
-    notify_startup = true,
-    startup_notify_once = true,
     server_start_mode = "on_demand",
+    timeout_ms = 5000,
+    preview_before_apply = false,
+    preview_max_chars = 160,
+    drop_stale_results = true,
   }
 
   local ok_cfg, mod = pcall(require, "latex_sympy")
@@ -70,12 +72,15 @@ function M.check()
   end
 
   _ok(string.format(
-    "Configured python=%s, port=%s, auto_install=%s, server_start_mode=%s, enable_python_eval=%s",
+    "Configured python=%s, port=%s, auto_install=%s, start_mode=%s, python_eval=%s, timeout_ms=%s, preview=%s, drop_stale_results=%s",
     tostring(cfg.python),
     tostring(cfg.port),
     tostring(cfg.auto_install),
     tostring(cfg.server_start_mode),
-    tostring(cfg.enable_python_eval)
+    tostring(cfg.enable_python_eval),
+    tostring(cfg.timeout_ms),
+    tostring(cfg.preview_before_apply),
+    tostring(cfg.drop_stale_results)
   ))
 end
 

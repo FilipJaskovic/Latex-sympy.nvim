@@ -2,6 +2,8 @@
 
 A Neovim plugin for computing selected LaTeX math with SymPy.
 
+It works on visual selections or `:<range>` and gives you quick transform commands (`replace`, `factor`, `expand`, `numerical`, `rref`) plus a generic operation command for more advanced SymPy features.
+
 ## Install
 
 ```lua
@@ -16,6 +18,10 @@ A Neovim plugin for computing selected LaTeX math with SymPy.
     notify_startup = true,
     startup_notify_once = true,
     server_start_mode = "on_demand",
+    timeout_ms = 5000,
+    preview_before_apply = false,
+    preview_max_chars = 160,
+    drop_stale_results = true,
   },
   config = function(_, opts)
     require("latex_sympy").setup(opts)
@@ -31,23 +37,17 @@ require("latex_sympy").setup({
   auto_install = false,
   port = 7395,
   enable_python_eval = false,
-  notify_startup = true,
-  startup_notify_once = true,
   server_start_mode = "on_demand", -- or "on_activate"
+  timeout_ms = 5000,
+  preview_before_apply = false,
+  preview_max_chars = 160,
+  drop_stale_results = true,
 })
 ```
 
-Options:
-
-- `python`: Python interpreter path
-- `auto_install`: auto-install `latex2sympy2` and `Flask`
-- `port`: local server port
-- `enable_python_eval`: enable `:LatexSympyPython` (off by default)
-- `notify_startup`: show startup message
-- `startup_notify_once`: show startup message once per session
-- `server_start_mode`: `on_demand` or `on_activate`
-
 ## Commands
+
+Existing commands are still there:
 
 - `:LatexSympyEqual`
 - `:LatexSympyReplace`
@@ -64,19 +64,49 @@ Options:
 - `:LatexSympyStop`
 - `:LatexSympyRestart`
 
+New generic op command:
+
+- `:LatexSympyOp[!] {op} [args...]`
+- no `!`: replace selected text with result
+- with `!`: append ` = <result>` after selected text
+
+Supported `op` values:
+
+- `solve [var]`
+- `diff [var] [order]`
+- `integrate [var] [lower] [upper]`
+- `limit <var> <point> [dir]`
+- `series <var> <point> <order>`
+- `det`
+- `inv`
+- `transpose`
+- `rank`
+- `eigenvals`
+
+Alias commands:
+
+- `:LatexSympySolve`
+- `:LatexSympyDiff`
+- `:LatexSympyIntegrate`
+- `:LatexSympyDet`
+- `:LatexSympyInv`
+
+Quick examples:
+
+- `:LatexSympyOp solve x`
+- `:LatexSympyOp! diff x 2`
+- `:LatexSympyOp integrate x 0 1`
+- `:LatexSympyOp limit x 0 +-`
+- `:LatexSympyOp series x 0 5`
+- `:LatexSympyOp det`
+
 ## Keybindings
 
 There are no default keybindings.
 
-Example with `<localleader>`:
-
 ```lua
-vim.keymap.set("v", "<localleader>le", ":<C-u>LatexSympyEqual<CR>", { desc = "latex sympy equal" })
-vim.keymap.set("v", "<localleader>lr", ":<C-u>LatexSympyReplace<CR>", { desc = "latex sympy replace" })
-vim.keymap.set("v", "<localleader>ln", ":<C-u>LatexSympyNumerical<CR>", { desc = "latex sympy numerical" })
-vim.keymap.set("v", "<localleader>lf", ":<C-u>LatexSympyFactor<CR>", { desc = "latex sympy factor" })
-vim.keymap.set("v", "<localleader>lx", ":<C-u>LatexSympyExpand<CR>", { desc = "latex sympy expand" })
-vim.keymap.set("v", "<localleader>lm", ":<C-u>LatexSympyMatrixRREF<CR>", { desc = "latex sympy rref" })
+vim.keymap.set("v", "<localleader>le", ":<C-u>LatexSympyEqual<CR>")
+vim.keymap.set("v", "<localleader>lo", ":<C-u>LatexSympyOp ")
 ```
 
 ## Requirements

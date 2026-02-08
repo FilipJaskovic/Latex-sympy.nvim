@@ -13,6 +13,12 @@ local COMMAND_NAMES = {
   "LatexSympyRestart",
   "LatexSympyStart",
   "LatexSympyStop",
+  "LatexSympyOp",
+  "LatexSympySolve",
+  "LatexSympyDiff",
+  "LatexSympyIntegrate",
+  "LatexSympyDet",
+  "LatexSympyInv",
 }
 
 describe("plugin loader", function()
@@ -84,5 +90,73 @@ describe("plugin loader", function()
     end
 
     assert.equals(1, count)
+  end)
+end)
+
+describe("operation parsing", function()
+  before_each(function()
+    package.loaded["latex_sympy"] = nil
+    local mod = require("latex_sympy")
+    mod._reset_state_for_tests()
+  end)
+
+  after_each(function()
+    local mod = package.loaded["latex_sympy"]
+    if mod and mod._reset_state_for_tests then
+      mod._reset_state_for_tests()
+    end
+    package.loaded["latex_sympy"] = nil
+  end)
+
+  it("parses solve/diff/integrate args", function()
+    local mod = require("latex_sympy")
+
+    local solve_params = mod._parse_operation_args_for_tests("solve", { "x" })
+    assert.same({ var = "x" }, solve_params)
+
+    local diff_params = mod._parse_operation_args_for_tests("diff", { "x", "3" })
+    assert.same({ var = "x", order = 3 }, diff_params)
+
+    local integrate_params = mod._parse_operation_args_for_tests("integrate", { "x", "0", "1" })
+    assert.same({ var = "x", lower = "0", upper = "1" }, integrate_params)
+  end)
+
+  it("parses limit and series args", function()
+    local mod = require("latex_sympy")
+
+    local limit_params = mod._parse_operation_args_for_tests("limit", { "x", "0" })
+    assert.same({ var = "x", point = "0", dir = "+-" }, limit_params)
+
+    local series_params = mod._parse_operation_args_for_tests("series", { "x", "0", "5" })
+    assert.same({ var = "x", point = "0", order = 5 }, series_params)
+  end)
+
+  it("returns error for invalid op args", function()
+    local mod = require("latex_sympy")
+
+    local _, err_unknown = mod._parse_operation_args_for_tests("unknown", {})
+    assert.is_truthy(err_unknown)
+
+    local _, err_series = mod._parse_operation_args_for_tests("series", { "x", "0", "bad" })
+    assert.is_truthy(err_series)
+  end)
+
+  it("maps bang to append mode", function()
+    local mod = require("latex_sympy")
+    assert.equals("append", mod._apply_mode_from_bang_for_tests({ bang = true }))
+    assert.equals("replace", mod._apply_mode_from_bang_for_tests({ bang = false }))
+  end)
+
+  it("tracks stale requests by buffer", function()
+    local mod = require("latex_sympy")
+    local buf = 12
+
+    local token_a = mod._mark_request_for_buffer_for_tests(buf)
+    assert.is_false(mod._is_stale_request_for_tests(buf, token_a))
+
+    local token_b = mod._mark_request_for_buffer_for_tests(buf)
+    assert.is_true(token_b > token_a)
+    assert.is_true(mod._is_stale_request_for_tests(buf, token_a))
+    assert.is_false(mod._is_stale_request_for_tests(buf, token_b))
   end)
 end)

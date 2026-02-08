@@ -8,6 +8,23 @@ local DEFAULT_CONFIG = {
   notify_startup = true,
   startup_notify_once = true,
   server_start_mode = "on_demand", -- "on_demand" | "on_activate"
+  timeout_ms = 5000,
+  preview_before_apply = false,
+  preview_max_chars = 160,
+  drop_stale_results = true,
+}
+
+local OP_NAMES = {
+  solve = true,
+  diff = true,
+  integrate = true,
+  limit = true,
+  series = true,
+  det = true,
+  inv = true,
+  transpose = true,
+  rank = true,
+  eigenvals = true,
 }
 
 local function clone(tbl)
@@ -15,6 +32,45 @@ local function clone(tbl)
     return vim.deepcopy(tbl)
   end
   return vim.tbl_deep_extend("force", {}, tbl)
+end
+
+local function coerce_positive_int(value, fallback)
+  local num = tonumber(value)
+  if not num then
+    return fallback
+  end
+  num = math.floor(num)
+  if num <= 0 then
+    return fallback
+  end
+  return num
+end
+
+local function normalize_mode(mode)
+  if mode == "on_activate" then
+    return "on_activate"
+  end
+  return "on_demand"
+end
+
+local function normalize_error(err)
+  local message = vim.trim(tostring(err or "Unknown error"))
+  if message == "" then
+    return "Unknown error"
+  end
+  if message:find("Could not resolve host", 1, true) then
+    return "Network error while contacting server"
+  end
+  if message:find("Couldn't connect to server", 1, true) or message:find("Failed to connect", 1, true) then
+    return "Server is not reachable"
+  end
+  if message:find("Operation timed out", 1, true) or message:find("timed out", 1, true) then
+    return "Request timed out"
+  end
+  if message:find("Invalid JSON", 1, true) then
+    return "Invalid response from server"
+  end
+  return message
 end
 
 -- Internal state
@@ -32,6 +88,9 @@ local configured = false
 local activated_for_tex = false
 local commands_registered = false
 local startup_notified = false
+
+local request_token_counter = 0
+local latest_request_token_by_buf = {}
 
 local ns_id = vim.api.nvim_create_namespace("latex_sympy")
 
@@ -81,6 +140,7 @@ local function system_async(cmd, args, on_exit)
     end)
     return
   end
+
   local output = {}
   local errout = {}
   vim.fn.jobstart(vim.list_extend({ cmd }, args or {}), {
@@ -233,9 +293,8 @@ local function start_server_process()
   })
 
   if server_job_id <= 0 then
-    local err = "failed to start Python server"
     server_job_id = nil
-    return false, err
+    return false, "failed to start Python server"
   end
 
   return true
@@ -273,12 +332,18 @@ local function ensure_server_running(callback)
   end)
 end
 
-local function http_request(method, path, body_data, on_success, on_error)
+local function timeout_seconds_string(timeout_ms)
+  local timeout = coerce_positive_int(timeout_ms, DEFAULT_CONFIG.timeout_ms)
+  local secs = timeout / 1000
+  return string.format("%.3f", secs)
+end
+
+local function http_request(method, path, body_payload, on_success, on_error, request_opts)
   local url = string.format("http://127.0.0.1:%d%s", current_config.port, path)
-  local args = { "-sS", "-X", method, url }
+  local args = { "-sS", "--max-time", timeout_seconds_string((request_opts or {}).timeout_ms), "-X", method, url }
 
   if method == "POST" then
-    local payload = json_encode({ data = body_data })
+    local payload = json_encode(body_payload or {})
     table.insert(args, "-H")
     table.insert(args, "Content-Type: application/json")
     table.insert(args, "-d")
@@ -290,9 +355,9 @@ local function http_request(method, path, body_data, on_success, on_error)
       if on_error then
         vim.schedule(function()
           if stderr and vim.trim(stderr) ~= "" then
-            on_error(stderr)
+            on_error(normalize_error(stderr))
           else
-            on_error("HTTP error, code " .. tostring(code))
+            on_error(normalize_error("HTTP error, code " .. tostring(code)))
           end
         end)
       end
@@ -303,7 +368,7 @@ local function http_request(method, path, body_data, on_success, on_error)
     if not ok or type(result) ~= "table" then
       if on_error then
         vim.schedule(function()
-          on_error("Invalid JSON from server")
+          on_error(normalize_error("Invalid JSON from server"))
         end)
       end
       return
@@ -312,7 +377,7 @@ local function http_request(method, path, body_data, on_success, on_error)
     if result.error and result.error ~= "" then
       if on_error then
         vim.schedule(function()
-          on_error(result.error)
+          on_error(normalize_error(result.error))
         end)
       end
       return
@@ -327,12 +392,16 @@ local function http_request(method, path, body_data, on_success, on_error)
   end)
 end
 
-local function post(path, data, on_success, on_error)
-  http_request("POST", path, data, on_success, on_error)
+local function post_data(path, data, on_success, on_error, request_opts)
+  http_request("POST", path, { data = data }, on_success, on_error, request_opts)
 end
 
-local function get(path, on_success, on_error)
-  http_request("GET", path, nil, on_success, on_error)
+local function post_json(path, payload, on_success, on_error, request_opts)
+  http_request("POST", path, payload, on_success, on_error, request_opts)
+end
+
+local function get(path, on_success, on_error, request_opts)
+  http_request("GET", path, nil, on_success, on_error, request_opts)
 end
 
 local function get_visual_range_or_lines(opts)
@@ -453,13 +522,233 @@ local function insert_after_range(range, insert_text)
   cleanup_range_marks(range)
 end
 
-local function run_with_server(callback)
+local function mark_request_for_buffer(buf)
+  request_token_counter = request_token_counter + 1
+  latest_request_token_by_buf[buf] = request_token_counter
+  return request_token_counter
+end
+
+local function is_stale_request(buf, token)
+  if not current_config.drop_stale_results then
+    return false
+  end
+  return latest_request_token_by_buf[buf] ~= token
+end
+
+local function preview_text(text)
+  local max_chars = coerce_positive_int(current_config.preview_max_chars, DEFAULT_CONFIG.preview_max_chars)
+  local result = tostring(text)
+  if #result <= max_chars then
+    return result
+  end
+  if max_chars <= 3 then
+    return result:sub(1, max_chars)
+  end
+  return result:sub(1, max_chars - 3) .. "..."
+end
+
+local function request_preview_approval(result_text, on_decision)
+  if not current_config.preview_before_apply then
+    on_decision(true)
+    return
+  end
+  if not vim.ui or not vim.ui.select then
+    on_decision(true)
+    return
+  end
+
+  local truncated = preview_text(result_text)
+  vim.schedule(function()
+    vim.ui.select({ "Apply", "Cancel" }, {
+      prompt = "latex_sympy preview: " .. truncated,
+    }, function(choice)
+      on_decision(choice == "Apply")
+    end)
+  end)
+end
+
+local function with_server(callback)
   ensure_server_running(function(ok, err)
     if not ok then
-      LOG.error(err or "Failed to start latex_sympy server")
+      LOG.error(normalize_error(err or "Failed to start latex_sympy server"))
       return
     end
     callback()
+  end)
+end
+
+local function run_range_request(opts, request_sender, apply_result)
+  local range, err = get_visual_range_or_lines(opts)
+  if not range then
+    LOG.error(err)
+    return
+  end
+
+  local request_token = mark_request_for_buffer(range.buf)
+
+  with_server(function()
+    request_sender(range, function(data)
+      if is_stale_request(range.buf, request_token) then
+        cleanup_range_marks(range)
+        return
+      end
+
+      local rendered = tostring(data)
+      request_preview_approval(rendered, function(should_apply)
+        if is_stale_request(range.buf, request_token) then
+          cleanup_range_marks(range)
+          return
+        end
+
+        if not should_apply then
+          cleanup_range_marks(range)
+          return
+        end
+
+        apply_result(range, rendered)
+      end)
+    end, function(request_error)
+      if is_stale_request(range.buf, request_token) then
+        cleanup_range_marks(range)
+        return
+      end
+      LOG.error(normalize_error(request_error))
+      cleanup_range_marks(range)
+    end)
+  end)
+end
+
+local function parse_int(value)
+  local num = tonumber(value)
+  if not num then
+    return nil
+  end
+  if math.floor(num) ~= num then
+    return nil
+  end
+  return math.floor(num)
+end
+
+local function parse_operation_args(op_name, args)
+  local op = string.lower(tostring(op_name or ""))
+  if not OP_NAMES[op] then
+    return nil, "Unknown op: " .. tostring(op_name)
+  end
+
+  local params = {}
+  local count = #args
+
+  if op == "solve" then
+    if count > 1 then
+      return nil, "solve expects: [var]"
+    end
+    if count == 1 then
+      params.var = args[1]
+    end
+    return params
+  end
+
+  if op == "diff" then
+    if count > 2 then
+      return nil, "diff expects: [var] [order]"
+    end
+    if count >= 1 then
+      local maybe_order = parse_int(args[1])
+      if count == 1 and maybe_order then
+        params.order = maybe_order
+      else
+        params.var = args[1]
+      end
+    end
+    if count == 2 then
+      local order = parse_int(args[2])
+      if not order then
+        return nil, "diff order must be an integer"
+      end
+      params.order = order
+    end
+    if params.order and params.order <= 0 then
+      return nil, "diff order must be positive"
+    end
+    return params
+  end
+
+  if op == "integrate" then
+    if count == 0 then
+      return params
+    end
+    if count == 1 then
+      params.var = args[1]
+      return params
+    end
+    if count == 3 then
+      params.var = args[1]
+      params.lower = args[2]
+      params.upper = args[3]
+      return params
+    end
+    return nil, "integrate expects: [var] [lower] [upper]"
+  end
+
+  if op == "limit" then
+    if count ~= 2 and count ~= 3 then
+      return nil, "limit expects: <var> <point> [dir]"
+    end
+    params.var = args[1]
+    params.point = args[2]
+    params.dir = args[3] or "+-"
+    return params
+  end
+
+  if op == "series" then
+    if count ~= 3 then
+      return nil, "series expects: <var> <point> <order>"
+    end
+    local order = parse_int(args[3])
+    if not order or order <= 0 then
+      return nil, "series order must be a positive integer"
+    end
+    params.var = args[1]
+    params.point = args[2]
+    params.order = order
+    return params
+  end
+
+  if count ~= 0 then
+    return nil, op .. " does not accept extra arguments"
+  end
+  return params
+end
+
+local function apply_mode_from_bang(opts)
+  if opts and opts.bang then
+    return "append"
+  end
+  return "replace"
+end
+
+local function run_operation(op_name, params, opts)
+  local op = string.lower(tostring(op_name or ""))
+  if not OP_NAMES[op] then
+    LOG.error("Unknown op: " .. tostring(op_name))
+    return
+  end
+
+  local mode = apply_mode_from_bang(opts)
+  local payload = {
+    op = op,
+    params = params or {},
+  }
+
+  run_range_request(opts, function(range, on_success, on_error)
+    payload.data = range.text
+    post_json("/op", payload, on_success, on_error, { timeout_ms = current_config.timeout_ms })
+  end, function(range, result)
+    if mode == "append" then
+      insert_after_range(range, " = " .. result)
+    else
+      replace_range(range, result)
+    end
   end)
 end
 
@@ -509,28 +798,15 @@ local function run_transform(action_name, opts)
     return
   end
 
-  local range, err = get_visual_range_or_lines(opts)
-  if not range then
-    LOG.error(err)
-    return
-  end
-
-  run_with_server(function()
-    post(action.path, range.text, function(data)
-      action.apply(range, data)
-    end, function(req_err)
-      LOG.error(req_err)
-      cleanup_range_marks(range)
-    end)
+  run_range_request(opts, function(range, on_success, on_error)
+    post_data(action.path, range.text, on_success, on_error, { timeout_ms = current_config.timeout_ms })
+  end, function(range, result)
+    action.apply(range, result)
   end)
 end
 
-local function create_commands()
-  if commands_registered then
-    return
-  end
-
-  local names = {
+local function command_names()
+  return {
     "LatexSympyEqual",
     "LatexSympyReplace",
     "LatexSympyNumerical",
@@ -545,8 +821,52 @@ local function create_commands()
     "LatexSympyRestart",
     "LatexSympyStart",
     "LatexSympyStop",
+    "LatexSympyOp",
+    "LatexSympySolve",
+    "LatexSympyDiff",
+    "LatexSympyIntegrate",
+    "LatexSympyDet",
+    "LatexSympyInv",
   }
-  for _, name in ipairs(names) do
+end
+
+local function completion_for_ops(arg_lead)
+  local values = {
+    "solve",
+    "diff",
+    "integrate",
+    "limit",
+    "series",
+    "det",
+    "inv",
+    "transpose",
+    "rank",
+    "eigenvals",
+  }
+  local out = {}
+  for _, value in ipairs(values) do
+    if arg_lead == "" or vim.startswith(value, arg_lead) then
+      table.insert(out, value)
+    end
+  end
+  return out
+end
+
+local function run_alias_operation(op_name, opts)
+  local params, err = parse_operation_args(op_name, opts.fargs or {})
+  if not params then
+    LOG.error(err)
+    return
+  end
+  run_operation(op_name, params, opts)
+end
+
+local function create_commands()
+  if commands_registered then
+    return
+  end
+
+  for _, name in ipairs(command_names()) do
     pcall(vim.api.nvim_del_user_command, name)
   end
 
@@ -573,6 +893,81 @@ local function create_commands()
   vim.api.nvim_create_user_command("LatexSympyMatrixRREF", function(opts)
     M.matrix_rref(opts)
   end, { range = true, desc = "Append \\to <rref> for matrix selection" })
+
+  vim.api.nvim_create_user_command("LatexSympyOp", function(opts)
+    local fargs = opts.fargs or {}
+    if #fargs < 1 then
+      LOG.error("Usage: :LatexSympyOp[!] {op} [args]")
+      return
+    end
+
+    local op_name = string.lower(fargs[1])
+    local args = {}
+    for index = 2, #fargs do
+      table.insert(args, fargs[index])
+    end
+
+    local params, err = parse_operation_args(op_name, args)
+    if not params then
+      LOG.error(err)
+      return
+    end
+
+    run_operation(op_name, params, opts)
+  end, {
+    range = true,
+    bang = true,
+    nargs = "+",
+    complete = function(arg_lead)
+      return completion_for_ops(arg_lead)
+    end,
+    desc = "Run advanced SymPy operation on selected LaTeX",
+  })
+
+  vim.api.nvim_create_user_command("LatexSympySolve", function(opts)
+    run_alias_operation("solve", opts)
+  end, {
+    range = true,
+    bang = true,
+    nargs = "?",
+    desc = "Solve selected expression/equation",
+  })
+
+  vim.api.nvim_create_user_command("LatexSympyDiff", function(opts)
+    run_alias_operation("diff", opts)
+  end, {
+    range = true,
+    bang = true,
+    nargs = "*",
+    desc = "Differentiate selected expression",
+  })
+
+  vim.api.nvim_create_user_command("LatexSympyIntegrate", function(opts)
+    run_alias_operation("integrate", opts)
+  end, {
+    range = true,
+    bang = true,
+    nargs = "*",
+    desc = "Integrate selected expression",
+  })
+
+  vim.api.nvim_create_user_command("LatexSympyDet", function(opts)
+    run_alias_operation("det", opts)
+  end, {
+    range = true,
+    bang = true,
+    nargs = 0,
+    desc = "Compute matrix determinant",
+  })
+
+  vim.api.nvim_create_user_command("LatexSympyInv", function(opts)
+    run_alias_operation("inv", opts)
+  end, {
+    range = true,
+    bang = true,
+    nargs = 0,
+    desc = "Compute matrix inverse",
+  })
 
   vim.api.nvim_create_user_command("LatexSympyVariances", function()
     M.variances()
@@ -620,13 +1015,6 @@ local function maybe_notify_startup()
   startup_notified = true
 end
 
-local function normalized_mode(mode)
-  if mode == "on_activate" then
-    return "on_activate"
-  end
-  return "on_demand"
-end
-
 function M.setup(opts)
   opts = opts or {}
 
@@ -650,7 +1038,19 @@ function M.setup(opts)
     next_config.startup_notify_once = opts.startup_notify_once
   end
   if opts.server_start_mode ~= nil then
-    next_config.server_start_mode = normalized_mode(opts.server_start_mode)
+    next_config.server_start_mode = normalize_mode(opts.server_start_mode)
+  end
+  if opts.timeout_ms ~= nil then
+    next_config.timeout_ms = coerce_positive_int(opts.timeout_ms, DEFAULT_CONFIG.timeout_ms)
+  end
+  if opts.preview_before_apply ~= nil then
+    next_config.preview_before_apply = opts.preview_before_apply
+  end
+  if opts.preview_max_chars ~= nil then
+    next_config.preview_max_chars = coerce_positive_int(opts.preview_max_chars, DEFAULT_CONFIG.preview_max_chars)
+  end
+  if opts.drop_stale_results ~= nil then
+    next_config.drop_stale_results = opts.drop_stale_results
   end
 
   local needs_restart = is_server_running() and (
@@ -665,7 +1065,7 @@ function M.setup(opts)
   if needs_restart then
     M.restart_server()
   elseif activated_for_tex and current_config.server_start_mode == "on_activate" and not is_server_running() then
-    run_with_server(function() end)
+    with_server(function() end)
   end
 end
 
@@ -683,12 +1083,12 @@ function M.activate_for_tex_buffer(_)
   maybe_notify_startup()
 
   if current_config.server_start_mode == "on_activate" then
-    run_with_server(function() end)
+    with_server(function() end)
   end
 end
 
 function M.start_server()
-  run_with_server(function()
+  with_server(function()
     LOG.info("server started")
   end)
 end
@@ -717,7 +1117,7 @@ end
 
 function M.restart_server()
   M.stop_server({ silent = true })
-  run_with_server(function()
+  with_server(function()
     LOG.info("server restarted")
   end)
 end
@@ -746,13 +1146,52 @@ function M.matrix_rref(opts)
   run_transform("matrix_rref", opts)
 end
 
+function M.op(opts)
+  local fargs = opts.fargs or {}
+  if #fargs < 1 then
+    LOG.error("Usage: :LatexSympyOp[!] {op} [args]")
+    return
+  end
+  local op_name = string.lower(fargs[1])
+  local args = {}
+  for index = 2, #fargs do
+    table.insert(args, fargs[index])
+  end
+  local params, err = parse_operation_args(op_name, args)
+  if not params then
+    LOG.error(err)
+    return
+  end
+  run_operation(op_name, params, opts)
+end
+
+function M.solve(opts)
+  run_alias_operation("solve", opts)
+end
+
+function M.diff(opts)
+  run_alias_operation("diff", opts)
+end
+
+function M.integrate(opts)
+  run_alias_operation("integrate", opts)
+end
+
+function M.det(opts)
+  run_alias_operation("det", opts)
+end
+
+function M.inv(opts)
+  run_alias_operation("inv", opts)
+end
+
 function M.variances()
-  run_with_server(function()
+  with_server(function()
     get("/variances", function(map)
       local values = map or {}
       local keys = {}
-      for k, _ in pairs(values) do
-        table.insert(keys, tostring(k))
+      for key, _ in pairs(values) do
+        table.insert(keys, tostring(key))
       end
       table.sort(keys)
 
@@ -766,29 +1205,29 @@ function M.variances()
       local col = cursor[2]
       vim.api.nvim_buf_set_text(0, row, col, row, col, lines)
     end, function(err)
-      LOG.error(err)
-    end)
+      LOG.error(normalize_error(err))
+    end, { timeout_ms = current_config.timeout_ms })
   end)
 end
 
 function M.reset()
-  run_with_server(function()
+  with_server(function()
     get("/reset", function(_)
       LOG.info("variances reset")
     end, function(err)
-      LOG.error(err)
-    end)
+      LOG.error(normalize_error(err))
+    end, { timeout_ms = current_config.timeout_ms })
   end)
 end
 
 function M.toggle_complex()
-  run_with_server(function()
+  with_server(function()
     get("/complex", function(res)
       local enabled = res and res.value
       LOG.info("complex numbers: " .. (enabled and "on" or "off"))
     end, function(err)
-      LOG.error(err)
-    end)
+      LOG.error(normalize_error(err))
+    end, { timeout_ms = current_config.timeout_ms })
   end)
 end
 
@@ -798,19 +1237,10 @@ function M.python(opts)
     return
   end
 
-  local range, err = get_visual_range_or_lines(opts)
-  if not range then
-    LOG.error(err)
-    return
-  end
-
-  run_with_server(function()
-    post("/python", range.text, function(data)
-      insert_after_range(range, " = " .. tostring(data))
-    end, function(req_err)
-      LOG.error(req_err)
-      cleanup_range_marks(range)
-    end)
+  run_range_request(opts, function(range, on_success, on_error)
+    post_data("/python", range.text, on_success, on_error, { timeout_ms = current_config.timeout_ms })
+  end, function(range, result)
+    insert_after_range(range, " = " .. tostring(result))
   end)
 end
 
@@ -823,6 +1253,9 @@ function M.status()
     string.format("Auto install: %s", tostring(current_config.auto_install)),
     string.format("Server start mode: %s", tostring(current_config.server_start_mode)),
     string.format("Python eval enabled: %s", tostring(current_config.enable_python_eval)),
+    string.format("Timeout (ms): %s", tostring(current_config.timeout_ms)),
+    string.format("Preview before apply: %s", tostring(current_config.preview_before_apply)),
+    string.format("Drop stale results: %s", tostring(current_config.drop_stale_results)),
   }
   LOG.info(table.concat(lines, "\n"))
 end
@@ -831,23 +1264,7 @@ end
 function M._reset_state_for_tests()
   M.stop_server({ silent = true })
 
-  local all_commands = {
-    "LatexSympyEqual",
-    "LatexSympyReplace",
-    "LatexSympyNumerical",
-    "LatexSympyFactor",
-    "LatexSympyExpand",
-    "LatexSympyMatrixRREF",
-    "LatexSympyVariances",
-    "LatexSympyReset",
-    "LatexSympyToggleComplex",
-    "LatexSympyPython",
-    "LatexSympyStatus",
-    "LatexSympyRestart",
-    "LatexSympyStart",
-    "LatexSympyStop",
-  }
-  for _, name in ipairs(all_commands) do
+  for _, name in ipairs(command_names()) do
     pcall(vim.api.nvim_del_user_command, name)
   end
 
@@ -858,6 +1275,9 @@ function M._reset_state_for_tests()
   pending_server_callbacks = {}
   last_server_stderr = ""
   auto_install_triggered = false
+
+  request_token_counter = 0
+  latest_request_token_by_buf = {}
 
   current_config = clone(DEFAULT_CONFIG)
   configured = false
@@ -876,6 +1296,22 @@ end
 
 function M._startup_notified_for_tests()
   return startup_notified
+end
+
+function M._parse_operation_args_for_tests(op_name, args)
+  return parse_operation_args(op_name, args)
+end
+
+function M._apply_mode_from_bang_for_tests(opts)
+  return apply_mode_from_bang(opts)
+end
+
+function M._mark_request_for_buffer_for_tests(buf)
+  return mark_request_for_buffer(buf)
+end
+
+function M._is_stale_request_for_tests(buf, token)
+  return is_stale_request(buf, token)
 end
 
 return M
