@@ -1,23 +1,62 @@
-local mock = require("spec.test_utilities.mock_vim")
+describe("latex_sympy defaults and safety", function()
+  local original_notify
+  local notifications
 
-describe("selection handling", function()
   before_each(function()
-    vim.cmd("new")
-    vim.api.nvim_buf_set_lines(0, 0, -1, false, {"a + b", "c + d"})
+    package.loaded["latex_sympy"] = nil
+    local mod = require("latex_sympy")
+    mod._reset_state_for_tests()
+
+    original_notify = vim.notify
+    notifications = {}
+    vim.notify = function(message, level, _)
+      table.insert(notifications, { message = tostring(message), level = level })
+    end
   end)
 
   after_each(function()
+    vim.notify = original_notify
+
+    local mod = package.loaded["latex_sympy"]
+    if mod and mod._reset_state_for_tests then
+      mod._reset_state_for_tests()
+    end
+
+    package.loaded["latex_sympy"] = nil
+  end)
+
+  it("uses minimal defaults", function()
+    local mod = require("latex_sympy")
+    local cfg = mod.get_config()
+
+    assert.equals("python3", cfg.python)
+    assert.is_false(cfg.auto_install)
+    assert.equals(7395, cfg.port)
+    assert.is_false(cfg.enable_python_eval)
+    assert.equals("on_demand", cfg.server_start_mode)
+    assert.is_true(cfg.notify_startup)
+    assert.is_true(cfg.startup_notify_once)
+  end)
+
+  it("blocks LatexSympyPython by default and avoids server start", function()
+    local mod = require("latex_sympy")
+    mod.activate_for_tex_buffer(0)
+
+    vim.cmd("new")
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "1 + 1" })
+
+    mod.python({ range = 1, line1 = 1, line2 = 1 })
+
+    local found_guard_message = false
+    for _, item in ipairs(notifications) do
+      if item.message:find("LatexSympyPython is disabled", 1, true) then
+        found_guard_message = true
+      end
+    end
+
+    assert.is_true(found_guard_message)
+    assert.is_false(mod._is_server_running_for_tests())
+
     vim.cmd("bwipeout!")
   end)
-
-  it("replaces selection with LaTeX result", function()
-    local mod = require("latex_sympy")
-    -- Simulate range: whole first line
-    mod.replace({ range = 1, line1 = 1, line2 = 1 })
-    -- We can't assert the exact output without server, but no error means invocation succeeded
-    assert.is_true(true)
-  end)
 end)
-
-
-
