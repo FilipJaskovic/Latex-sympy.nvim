@@ -184,7 +184,7 @@ describe("default keymaps", function()
   end)
 
   after_each(function()
-    pcall(vim.keymap.del, "x", "<leader>xe")
+    pcall(vim.keymap.del, "x", "<leader>le")
 
     local mod = package.loaded["latex_sympy"]
     if mod and mod._reset_state_for_tests then
@@ -199,8 +199,8 @@ describe("default keymaps", function()
     require("plugin.plugin")
     vim.api.nvim_exec_autocmds("FileType", { pattern = "tex", modeline = false })
 
-    local visual_equal = vim.fn.maparg("<leader>xe", "x", false, true)
-    local visual_op = vim.fn.maparg("<leader>xo", "x", false, true)
+    local visual_equal = vim.fn.maparg("<leader>le", "x", false, true)
+    local visual_op = vim.fn.maparg("<leader>lo", "x", false, true)
     local normal_status = vim.fn.maparg("<leader>xS", "n", false, true)
 
     assert.is_true(type(visual_equal.rhs) == "string" and visual_equal.rhs:find("LatexSympyEqual", 1, true) ~= nil)
@@ -209,11 +209,11 @@ describe("default keymaps", function()
   end)
 
   it("respects existing mappings when configured", function()
-    vim.keymap.set("x", "<leader>xe", "<Cmd>echo 'keep'<CR>", { silent = true })
+    vim.keymap.set("x", "<leader>le", "<Cmd>echo 'keep'<CR>", { silent = true })
     require("plugin.plugin")
     vim.api.nvim_exec_autocmds("FileType", { pattern = "tex", modeline = false })
 
-    local preserved = vim.fn.maparg("<leader>xe", "x", false, true)
+    local preserved = vim.fn.maparg("<leader>le", "x", false, true)
     assert.is_true(tostring(preserved.rhs):find("echo", 1, true) ~= nil)
   end)
 
@@ -222,7 +222,7 @@ describe("default keymaps", function()
     mod.setup({ default_keymaps = false })
     mod.activate_for_tex_buffer(0)
 
-    local visual_equal = vim.fn.maparg("<leader>xe", "x", false, true)
+    local visual_equal = vim.fn.maparg("<leader>le", "x", false, true)
     assert.is_true(visual_equal.lhs == nil or visual_equal.lhs == "")
   end)
 end)

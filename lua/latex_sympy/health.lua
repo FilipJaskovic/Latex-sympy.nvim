@@ -37,7 +37,8 @@ function M.check()
     preview_max_chars = 160,
     drop_stale_results = true,
     default_keymaps = true,
-    keymap_prefix = "<leader>x",
+    keymap_prefix = "<leader>l",
+    normal_keymap_prefix = "<leader>x",
     respect_existing_keymaps = true,
   }
 
@@ -76,7 +77,7 @@ function M.check()
   end
 
   _ok(string.format(
-    "Configured python=%s, port=%s, auto_install=%s, start_mode=%s, python_eval=%s, timeout_ms=%s, preview=%s, drop_stale_results=%s, notify_info=%s, default_keymaps=%s, keymap_prefix=%s, respect_existing_keymaps=%s",
+    "Configured python=%s, port=%s, auto_install=%s, start_mode=%s, python_eval=%s, timeout_ms=%s, preview=%s, drop_stale_results=%s, notify_info=%s, default_keymaps=%s, visual_keymap_prefix=%s, normal_keymap_prefix=%s, respect_existing_keymaps=%s",
     tostring(cfg.python),
     tostring(cfg.port),
     tostring(cfg.auto_install),
@@ -88,6 +89,7 @@ function M.check()
     tostring(cfg.notify_info),
     tostring(cfg.default_keymaps),
     tostring(cfg.keymap_prefix),
+    tostring(cfg.normal_keymap_prefix),
     tostring(cfg.respect_existing_keymaps)
   ))
 end

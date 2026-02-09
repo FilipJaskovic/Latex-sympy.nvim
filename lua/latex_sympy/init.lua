@@ -14,7 +14,8 @@ local DEFAULT_CONFIG = {
   preview_max_chars = 160,
   drop_stale_results = true,
   default_keymaps = true,
-  keymap_prefix = "<leader>x",
+  keymap_prefix = "<leader>l", -- visual mode prefix
+  normal_keymap_prefix = "<leader>x",
   respect_existing_keymaps = true,
 }
 
@@ -933,8 +934,10 @@ local function apply_default_keymaps(bufnr)
     return
   end
 
-  local prefix = normalize_keymap_prefix(current_config.keymap_prefix)
+  local visual_prefix = normalize_keymap_prefix(current_config.keymap_prefix)
+  local normal_prefix = normalize_keymap_prefix(current_config.normal_keymap_prefix)
   for _, mode in ipairs({ "x", "n" }) do
+    local prefix = (mode == "x") and visual_prefix or normal_prefix
     local entries = DEFAULT_KEYMAPS[mode] or {}
     for _, entry in ipairs(entries) do
       maybe_set_default_keymap(bufnr, mode, prefix .. entry.suffix, entry.rhs, entry.desc)
@@ -1206,7 +1209,14 @@ function M.setup(opts)
     next_config.default_keymaps = opts.default_keymaps
   end
   if opts.keymap_prefix ~= nil then
-    next_config.keymap_prefix = normalize_keymap_prefix(opts.keymap_prefix)
+    local prefix = normalize_keymap_prefix(opts.keymap_prefix)
+    next_config.keymap_prefix = prefix
+    if opts.normal_keymap_prefix == nil then
+      next_config.normal_keymap_prefix = prefix
+    end
+  end
+  if opts.normal_keymap_prefix ~= nil then
+    next_config.normal_keymap_prefix = normalize_keymap_prefix(opts.normal_keymap_prefix)
   end
   if opts.respect_existing_keymaps ~= nil then
     next_config.respect_existing_keymaps = opts.respect_existing_keymaps
@@ -1427,7 +1437,8 @@ function M.status()
     string.format("Drop stale results: %s", tostring(current_config.drop_stale_results)),
     string.format("Notify info: %s", tostring(current_config.notify_info)),
     string.format("Default keymaps: %s", tostring(current_config.default_keymaps)),
-    string.format("Keymap prefix: %s", tostring(current_config.keymap_prefix)),
+    string.format("Visual keymap prefix: %s", tostring(current_config.keymap_prefix)),
+    string.format("Normal keymap prefix: %s", tostring(current_config.normal_keymap_prefix)),
     string.format("Respect existing keymaps: %s", tostring(current_config.respect_existing_keymaps)),
   }
   LOG.info(table.concat(lines, "\n"), { force = true })

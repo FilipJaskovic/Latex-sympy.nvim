@@ -41,7 +41,8 @@ It supports:
     preview_max_chars = 160,
     drop_stale_results = true,
     default_keymaps = true,
-    keymap_prefix = "<leader>x",
+    keymap_prefix = "<leader>l",
+    normal_keymap_prefix = "<leader>x",
     respect_existing_keymaps = true,
   },
   config = function(_, opts)
@@ -165,23 +166,24 @@ Keymaps are:
 
 Prefix default:
 
-- `<leader>x`
+- visual: `<leader>l`
+- normal: `<leader>x`
 
 Visual mode mappings:
 
-- `<leader>xe` -> `LatexSympyEqual`
-- `<leader>xr` -> `LatexSympyReplace`
-- `<leader>xn` -> `LatexSympyNumerical`
-- `<leader>xf` -> `LatexSympyFactor`
-- `<leader>xx` -> `LatexSympyExpand`
-- `<leader>xm` -> `LatexSympyMatrixRREF`
-- `<leader>xo` -> `LatexSympyOp` (opens command-line for args)
-- `<leader>xs` -> `LatexSympySolve`
-- `<leader>xd` -> `LatexSympyDiff`
-- `<leader>xi` -> `LatexSympyIntegrate`
-- `<leader>xt` -> `LatexSympyDet`
-- `<leader>xv` -> `LatexSympyInv`
-- `<leader>xa` -> `LatexSympyRepeat`
+- `<leader>le` -> `LatexSympyEqual`
+- `<leader>lr` -> `LatexSympyReplace`
+- `<leader>ln` -> `LatexSympyNumerical`
+- `<leader>lf` -> `LatexSympyFactor`
+- `<leader>lx` -> `LatexSympyExpand`
+- `<leader>lm` -> `LatexSympyMatrixRREF`
+- `<leader>lo` -> `LatexSympyOp` (opens command-line for args)
+- `<leader>ls` -> `LatexSympySolve`
+- `<leader>ld` -> `LatexSympyDiff`
+- `<leader>li` -> `LatexSympyIntegrate`
+- `<leader>lt` -> `LatexSympyDet`
+- `<leader>lv` -> `LatexSympyInv`
+- `<leader>la` -> `LatexSympyRepeat`
 
 Normal mode mappings:
 
@@ -202,6 +204,7 @@ require("latex_sympy").setup({
 
 require("latex_sympy").setup({
   keymap_prefix = "<leader>s",
+  normal_keymap_prefix = "<leader>n",
 })
 ```
 
@@ -234,8 +237,10 @@ require("latex_sympy").setup({
   - ignore out-of-order old async responses
 - `default_keymaps` (`true`)
   - auto-register default keymaps for `tex` buffers
-- `keymap_prefix` (`"<leader>x"`)
-  - prefix used by default keymap set
+- `keymap_prefix` (`"<leader>l"`)
+  - visual-mode prefix used by default keymap set
+- `normal_keymap_prefix` (`"<leader>x"`)
+  - normal-mode prefix used by default keymap set
 - `respect_existing_keymaps` (`true`)
   - do not override existing user mappings
 
