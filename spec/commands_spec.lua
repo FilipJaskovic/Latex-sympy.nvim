@@ -14,6 +14,7 @@ local COMMAND_NAMES = {
   "LatexSympyStart",
   "LatexSympyStop",
   "LatexSympyOp",
+  "LatexSympyRepeat",
   "LatexSympySolve",
   "LatexSympyDiff",
   "LatexSympyIntegrate",
@@ -158,5 +159,70 @@ describe("operation parsing", function()
     assert.is_true(token_b > token_a)
     assert.is_true(mod._is_stale_request_for_tests(buf, token_a))
     assert.is_false(mod._is_stale_request_for_tests(buf, token_b))
+  end)
+
+  it("normalizes empty op params to a JSON object", function()
+    local mod = require("latex_sympy")
+    local normalized = mod._normalize_params_for_payload_for_tests({})
+
+    if vim.type then
+      assert.equals("dict", vim.type(normalized))
+    else
+      local encoded = vim.fn.json_encode({ params = normalized })
+      assert.is_true(encoded:find([["params":{}]], 1, true) ~= nil)
+    end
+  end)
+end)
+
+describe("default keymaps", function()
+  before_each(function()
+    package.loaded["latex_sympy"] = nil
+    package.loaded["plugin.plugin"] = nil
+
+    local mod = require("latex_sympy")
+    mod._reset_state_for_tests()
+  end)
+
+  after_each(function()
+    pcall(vim.keymap.del, "x", "<leader>xe")
+
+    local mod = package.loaded["latex_sympy"]
+    if mod and mod._reset_state_for_tests then
+      mod._reset_state_for_tests()
+    end
+
+    package.loaded["plugin.plugin"] = nil
+    package.loaded["latex_sympy"] = nil
+  end)
+
+  it("applies leader keymaps for tex buffers", function()
+    require("plugin.plugin")
+    vim.api.nvim_exec_autocmds("FileType", { pattern = "tex", modeline = false })
+
+    local visual_equal = vim.fn.maparg("<leader>xe", "x", false, true)
+    local visual_op = vim.fn.maparg("<leader>xo", "x", false, true)
+    local normal_status = vim.fn.maparg("<leader>xS", "n", false, true)
+
+    assert.is_true(type(visual_equal.rhs) == "string" and visual_equal.rhs:find("LatexSympyEqual", 1, true) ~= nil)
+    assert.is_true(type(visual_op.rhs) == "string" and visual_op.rhs:find("LatexSympyOp", 1, true) ~= nil)
+    assert.is_true(type(normal_status.rhs) == "string" and normal_status.rhs:find("LatexSympyStatus", 1, true) ~= nil)
+  end)
+
+  it("respects existing mappings when configured", function()
+    vim.keymap.set("x", "<leader>xe", "<Cmd>echo 'keep'<CR>", { silent = true })
+    require("plugin.plugin")
+    vim.api.nvim_exec_autocmds("FileType", { pattern = "tex", modeline = false })
+
+    local preserved = vim.fn.maparg("<leader>xe", "x", false, true)
+    assert.is_true(tostring(preserved.rhs):find("echo", 1, true) ~= nil)
+  end)
+
+  it("can disable default keymaps", function()
+    local mod = require("latex_sympy")
+    mod.setup({ default_keymaps = false })
+    mod.activate_for_tex_buffer(0)
+
+    local visual_equal = vim.fn.maparg("<leader>xe", "x", false, true)
+    assert.is_true(visual_equal.lhs == nil or visual_equal.lhs == "")
   end)
 end)

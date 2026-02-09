@@ -7,11 +7,15 @@ local DEFAULT_CONFIG = {
   enable_python_eval = false,
   notify_startup = true,
   startup_notify_once = true,
+  notify_info = false,
   server_start_mode = "on_demand", -- "on_demand" | "on_activate"
   timeout_ms = 5000,
   preview_before_apply = false,
   preview_max_chars = 160,
   drop_stale_results = true,
+  default_keymaps = true,
+  keymap_prefix = "<leader>x",
+  respect_existing_keymaps = true,
 }
 
 local OP_NAMES = {
@@ -53,6 +57,17 @@ local function normalize_mode(mode)
   return "on_demand"
 end
 
+local function normalize_keymap_prefix(prefix)
+  if type(prefix) ~= "string" then
+    return DEFAULT_CONFIG.keymap_prefix
+  end
+  local value = vim.trim(prefix)
+  if value == "" then
+    return DEFAULT_CONFIG.keymap_prefix
+  end
+  return value
+end
+
 local function normalize_error(err)
   local message = vim.trim(tostring(err or "Unknown error"))
   if message == "" then
@@ -73,6 +88,23 @@ local function normalize_error(err)
   return message
 end
 
+local function empty_object()
+  if vim.empty_dict then
+    return vim.empty_dict()
+  end
+  return {}
+end
+
+local function normalize_params_for_payload(params)
+  if type(params) ~= "table" then
+    return empty_object()
+  end
+  if next(params) == nil then
+    return empty_object()
+  end
+  return params
+end
+
 -- Internal state
 local server_job_id = nil
 local plugin_dir = nil
@@ -88,6 +120,8 @@ local configured = false
 local activated_for_tex = false
 local commands_registered = false
 local startup_notified = false
+local last_operation = nil
+local applied_default_keymaps = {}
 
 local request_token_counter = 0
 local latest_request_token_by_buf = {}
@@ -95,7 +129,11 @@ local latest_request_token_by_buf = {}
 local ns_id = vim.api.nvim_create_namespace("latex_sympy")
 
 local LOG = {}
-function LOG.info(message)
+function LOG.info(message, opts)
+  local force = type(opts) == "table" and opts.force
+  if not force and not current_config.notify_info then
+    return
+  end
   vim.notify("latex_sympy: " .. tostring(message), vim.log.levels.INFO)
 end
 function LOG.warn(message)
@@ -104,6 +142,33 @@ end
 function LOG.error(message)
   vim.notify("latex_sympy: " .. tostring(message), vim.log.levels.ERROR)
 end
+
+local DEFAULT_KEYMAPS = {
+  x = {
+    { suffix = "e", rhs = ":<C-u>LatexSympyEqual<CR>", desc = "latex_sympy equal" },
+    { suffix = "r", rhs = ":<C-u>LatexSympyReplace<CR>", desc = "latex_sympy replace" },
+    { suffix = "n", rhs = ":<C-u>LatexSympyNumerical<CR>", desc = "latex_sympy numerical" },
+    { suffix = "f", rhs = ":<C-u>LatexSympyFactor<CR>", desc = "latex_sympy factor" },
+    { suffix = "x", rhs = ":<C-u>LatexSympyExpand<CR>", desc = "latex_sympy expand" },
+    { suffix = "m", rhs = ":<C-u>LatexSympyMatrixRREF<CR>", desc = "latex_sympy matrix rref" },
+    { suffix = "o", rhs = ":<C-u>LatexSympyOp ", desc = "latex_sympy op" },
+    { suffix = "s", rhs = ":<C-u>LatexSympySolve<CR>", desc = "latex_sympy solve" },
+    { suffix = "d", rhs = ":<C-u>LatexSympyDiff<CR>", desc = "latex_sympy diff" },
+    { suffix = "i", rhs = ":<C-u>LatexSympyIntegrate<CR>", desc = "latex_sympy integrate" },
+    { suffix = "t", rhs = ":<C-u>LatexSympyDet<CR>", desc = "latex_sympy det" },
+    { suffix = "v", rhs = ":<C-u>LatexSympyInv<CR>", desc = "latex_sympy inv" },
+    { suffix = "a", rhs = ":<C-u>LatexSympyRepeat<CR>", desc = "latex_sympy repeat op" },
+  },
+  n = {
+    { suffix = "S", rhs = "<Cmd>LatexSympyStatus<CR>", desc = "latex_sympy status" },
+    { suffix = "1", rhs = "<Cmd>LatexSympyStart<CR>", desc = "latex_sympy start server" },
+    { suffix = "0", rhs = "<Cmd>LatexSympyStop<CR>", desc = "latex_sympy stop server" },
+    { suffix = "R", rhs = "<Cmd>LatexSympyRestart<CR>", desc = "latex_sympy restart server" },
+    { suffix = "V", rhs = "<Cmd>LatexSympyVariances<CR>", desc = "latex_sympy variances" },
+    { suffix = "Z", rhs = "<Cmd>LatexSympyReset<CR>", desc = "latex_sympy reset variances" },
+    { suffix = "C", rhs = "<Cmd>LatexSympyToggleComplex<CR>", desc = "latex_sympy toggle complex" },
+  },
+}
 
 local function json_encode(tbl)
   if vim.json and vim.json.encode then
@@ -735,9 +800,13 @@ local function run_operation(op_name, params, opts)
   end
 
   local mode = apply_mode_from_bang(opts)
+  last_operation = {
+    op = op,
+    params = clone(params or {}),
+  }
   local payload = {
     op = op,
-    params = params or {},
+    params = normalize_params_for_payload(params or {}),
   }
 
   run_range_request(opts, function(range, on_success, on_error)
@@ -805,6 +874,74 @@ local function run_transform(action_name, opts)
   end)
 end
 
+local function keymap_record_key(bufnr, mode, lhs)
+  return table.concat({ tostring(bufnr), mode, lhs }, "::")
+end
+
+local function remember_applied_default_keymap(bufnr, mode, lhs)
+  applied_default_keymaps[keymap_record_key(bufnr, mode, lhs)] = {
+    bufnr = bufnr,
+    mode = mode,
+    lhs = lhs,
+  }
+end
+
+local function clear_applied_default_keymaps()
+  for _, entry in pairs(applied_default_keymaps) do
+    pcall(vim.keymap.del, entry.mode, entry.lhs, { buffer = entry.bufnr })
+  end
+  applied_default_keymaps = {}
+end
+
+local function keymap_exists(bufnr, mode, lhs)
+  local ok_buf, buf_maps = pcall(vim.api.nvim_buf_get_keymap, bufnr, mode)
+  if ok_buf and type(buf_maps) == "table" then
+    for _, map in ipairs(buf_maps) do
+      if map.lhs == lhs then
+        return true
+      end
+    end
+  end
+
+  local ok_global, global_maps = pcall(vim.api.nvim_get_keymap, mode)
+  if ok_global and type(global_maps) == "table" then
+    for _, map in ipairs(global_maps) do
+      if map.lhs == lhs then
+        return true
+      end
+    end
+  end
+
+  return false
+end
+
+local function maybe_set_default_keymap(bufnr, mode, lhs, rhs, desc)
+  if current_config.respect_existing_keymaps and keymap_exists(bufnr, mode, lhs) then
+    return
+  end
+
+  vim.keymap.set(mode, lhs, rhs, {
+    buffer = bufnr,
+    silent = true,
+    desc = desc,
+  })
+  remember_applied_default_keymap(bufnr, mode, lhs)
+end
+
+local function apply_default_keymaps(bufnr)
+  if not current_config.default_keymaps then
+    return
+  end
+
+  local prefix = normalize_keymap_prefix(current_config.keymap_prefix)
+  for _, mode in ipairs({ "x", "n" }) do
+    local entries = DEFAULT_KEYMAPS[mode] or {}
+    for _, entry in ipairs(entries) do
+      maybe_set_default_keymap(bufnr, mode, prefix .. entry.suffix, entry.rhs, entry.desc)
+    end
+  end
+end
+
 local function command_names()
   return {
     "LatexSympyEqual",
@@ -822,6 +959,7 @@ local function command_names()
     "LatexSympyStart",
     "LatexSympyStop",
     "LatexSympyOp",
+    "LatexSympyRepeat",
     "LatexSympySolve",
     "LatexSympyDiff",
     "LatexSympyIntegrate",
@@ -924,6 +1062,15 @@ local function create_commands()
     desc = "Run advanced SymPy operation on selected LaTeX",
   })
 
+  vim.api.nvim_create_user_command("LatexSympyRepeat", function(opts)
+    M.repeat_op(opts)
+  end, {
+    range = true,
+    bang = true,
+    nargs = 0,
+    desc = "Repeat last LatexSympyOp/alias operation",
+  })
+
   vim.api.nvim_create_user_command("LatexSympySolve", function(opts)
     run_alias_operation("solve", opts)
   end, {
@@ -1011,7 +1158,7 @@ local function maybe_notify_startup()
   if current_config.startup_notify_once and startup_notified then
     return
   end
-  LOG.info("active")
+  LOG.info("active", { force = true })
   startup_notified = true
 end
 
@@ -1037,6 +1184,9 @@ function M.setup(opts)
   if opts.startup_notify_once ~= nil then
     next_config.startup_notify_once = opts.startup_notify_once
   end
+  if opts.notify_info ~= nil then
+    next_config.notify_info = opts.notify_info
+  end
   if opts.server_start_mode ~= nil then
     next_config.server_start_mode = normalize_mode(opts.server_start_mode)
   end
@@ -1051,6 +1201,15 @@ function M.setup(opts)
   end
   if opts.drop_stale_results ~= nil then
     next_config.drop_stale_results = opts.drop_stale_results
+  end
+  if opts.default_keymaps ~= nil then
+    next_config.default_keymaps = opts.default_keymaps
+  end
+  if opts.keymap_prefix ~= nil then
+    next_config.keymap_prefix = normalize_keymap_prefix(opts.keymap_prefix)
+  end
+  if opts.respect_existing_keymaps ~= nil then
+    next_config.respect_existing_keymaps = opts.respect_existing_keymaps
   end
 
   local needs_restart = is_server_running() and (
@@ -1073,13 +1232,14 @@ function M.get_config()
   return clone(current_config)
 end
 
-function M.activate_for_tex_buffer(_)
+function M.activate_for_tex_buffer(bufnr)
   if not configured then
     M.setup({})
   end
 
   activated_for_tex = true
   create_commands()
+  apply_default_keymaps(bufnr or 0)
   maybe_notify_startup()
 
   if current_config.server_start_mode == "on_activate" then
@@ -1163,6 +1323,15 @@ function M.op(opts)
     return
   end
   run_operation(op_name, params, opts)
+end
+
+function M.repeat_op(opts)
+  if not last_operation then
+    LOG.error("No previous LatexSympyOp operation to repeat")
+    return
+  end
+
+  run_operation(last_operation.op, clone(last_operation.params or {}), opts or {})
 end
 
 function M.solve(opts)
@@ -1256,13 +1425,18 @@ function M.status()
     string.format("Timeout (ms): %s", tostring(current_config.timeout_ms)),
     string.format("Preview before apply: %s", tostring(current_config.preview_before_apply)),
     string.format("Drop stale results: %s", tostring(current_config.drop_stale_results)),
+    string.format("Notify info: %s", tostring(current_config.notify_info)),
+    string.format("Default keymaps: %s", tostring(current_config.default_keymaps)),
+    string.format("Keymap prefix: %s", tostring(current_config.keymap_prefix)),
+    string.format("Respect existing keymaps: %s", tostring(current_config.respect_existing_keymaps)),
   }
-  LOG.info(table.concat(lines, "\n"))
+  LOG.info(table.concat(lines, "\n"), { force = true })
 end
 
 -- Test helpers
 function M._reset_state_for_tests()
   M.stop_server({ silent = true })
+  clear_applied_default_keymaps()
 
   for _, name in ipairs(command_names()) do
     pcall(vim.api.nvim_del_user_command, name)
@@ -1284,6 +1458,7 @@ function M._reset_state_for_tests()
   activated_for_tex = false
   commands_registered = false
   startup_notified = false
+  last_operation = nil
 end
 
 function M._is_activated_for_tests()
@@ -1312,6 +1487,14 @@ end
 
 function M._is_stale_request_for_tests(buf, token)
   return is_stale_request(buf, token)
+end
+
+function M._normalize_params_for_payload_for_tests(params)
+  return normalize_params_for_payload(params)
+end
+
+function M._default_keymaps_for_tests()
+  return clone(DEFAULT_KEYMAPS)
 end
 
 return M

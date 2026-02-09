@@ -4,6 +4,8 @@ A Neovim plugin for computing selected LaTeX math with SymPy.
 
 It works on visual selections or `:<range>` and gives you quick transform commands (`replace`, `factor`, `expand`, `numerical`, `rref`) plus a generic operation command for more advanced SymPy features.
 
+For full usage details, see [`doc.md`](doc.md).
+
 ## Install
 
 ```lua
@@ -17,11 +19,15 @@ It works on visual selections or `:<range>` and gives you quick transform comman
     enable_python_eval = false,
     notify_startup = true,
     startup_notify_once = true,
+    notify_info = false,
     server_start_mode = "on_demand",
     timeout_ms = 5000,
     preview_before_apply = false,
     preview_max_chars = 160,
     drop_stale_results = true,
+    default_keymaps = true,
+    keymap_prefix = "<leader>x",
+    respect_existing_keymaps = true,
   },
   config = function(_, opts)
     require("latex_sympy").setup(opts)
@@ -39,11 +45,15 @@ require("latex_sympy").setup({
   enable_python_eval = false,
   notify_startup = true,
   startup_notify_once = true,
+  notify_info = false,
   server_start_mode = "on_demand", -- or "on_activate"
   timeout_ms = 5000,
   preview_before_apply = false,
   preview_max_chars = 160,
   drop_stale_results = true,
+  default_keymaps = true,
+  keymap_prefix = "<leader>x",
+  respect_existing_keymaps = true,
 })
 ```
 
@@ -92,6 +102,7 @@ Alias commands:
 - `:LatexSympyIntegrate`
 - `:LatexSympyDet`
 - `:LatexSympyInv`
+- `:LatexSympyRepeat[!]`
 
 Quick examples:
 
@@ -104,11 +115,24 @@ Quick examples:
 
 ## Keybindings
 
-There are no default keybindings.
+Default keymaps are enabled for `tex` buffers and use `<leader>x...`.
+
+- Visual: `<leader>xe` equal, `<leader>xr` replace, `<leader>xn` numerical, `<leader>xf` factor, `<leader>xx` expand
+- Visual: `<leader>xm` rref, `<leader>xo` op prompt, `<leader>xs` solve, `<leader>xd` diff, `<leader>xi` integrate
+- Visual: `<leader>xt` det, `<leader>xv` inv, `<leader>xa` repeat last op
+- Normal: `<leader>xS` status, `<leader>x1` start, `<leader>x0` stop, `<leader>xR` restart
+- Normal: `<leader>xV` variances, `<leader>xZ` reset, `<leader>xC` toggle complex
 
 ```lua
-vim.keymap.set("v", "<localleader>le", ":<C-u>LatexSympyEqual<CR>")
-vim.keymap.set("v", "<localleader>lo", ":<C-u>LatexSympyOp ")
+-- Disable default keymaps:
+require("latex_sympy").setup({
+  default_keymaps = false,
+})
+
+-- Or keep defaults and choose a different prefix:
+require("latex_sympy").setup({
+  keymap_prefix = "<leader>s",
+})
 ```
 
 ## Requirements

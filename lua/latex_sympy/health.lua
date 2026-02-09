@@ -30,11 +30,15 @@ function M.check()
     auto_install = false,
     port = 7395,
     enable_python_eval = false,
+    notify_info = false,
     server_start_mode = "on_demand",
     timeout_ms = 5000,
     preview_before_apply = false,
     preview_max_chars = 160,
     drop_stale_results = true,
+    default_keymaps = true,
+    keymap_prefix = "<leader>x",
+    respect_existing_keymaps = true,
   }
 
   local ok_cfg, mod = pcall(require, "latex_sympy")
@@ -72,7 +76,7 @@ function M.check()
   end
 
   _ok(string.format(
-    "Configured python=%s, port=%s, auto_install=%s, start_mode=%s, python_eval=%s, timeout_ms=%s, preview=%s, drop_stale_results=%s",
+    "Configured python=%s, port=%s, auto_install=%s, start_mode=%s, python_eval=%s, timeout_ms=%s, preview=%s, drop_stale_results=%s, notify_info=%s, default_keymaps=%s, keymap_prefix=%s, respect_existing_keymaps=%s",
     tostring(cfg.python),
     tostring(cfg.port),
     tostring(cfg.auto_install),
@@ -80,7 +84,11 @@ function M.check()
     tostring(cfg.enable_python_eval),
     tostring(cfg.timeout_ms),
     tostring(cfg.preview_before_apply),
-    tostring(cfg.drop_stale_results)
+    tostring(cfg.drop_stale_results),
+    tostring(cfg.notify_info),
+    tostring(cfg.default_keymaps),
+    tostring(cfg.keymap_prefix),
+    tostring(cfg.respect_existing_keymaps)
   ))
 end
 

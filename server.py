@@ -393,7 +393,12 @@ def run_operation():
     params = payload.get("params", {})
     if params is None:
         params = {}
-    if not isinstance(params, dict):
+    elif isinstance(params, list):
+        if len(params) == 0:
+            params = {}
+        else:
+            return _error("'params' must be an object")
+    elif not isinstance(params, dict):
         return _error("'params' must be an object")
 
     try:

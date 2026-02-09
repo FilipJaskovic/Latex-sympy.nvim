@@ -35,6 +35,9 @@ local function run_smoke()
   assert_true(not command_exists("LatexSympyOp"), "LatexSympyOp must not be registered for non-tex")
   assert_true(not command_exists("LatexSympySolve"), "LatexSympySolve must not be registered for non-tex")
 
+  local pre_map = vim.fn.maparg("<leader>xe", "x", false, true)
+  assert_true(pre_map.lhs == nil or pre_map.lhs == "", "default tex keymaps must not exist before tex activation")
+
   -- First tex activation should register commands.
   vim.api.nvim_exec_autocmds("FileType", { pattern = "tex", modeline = false })
   assert_true(command_exists("LatexSympyReplace"), "LatexSympyReplace should be registered after tex activation")
@@ -44,6 +47,7 @@ local function run_smoke()
   assert_true(command_exists("LatexSympyIntegrate"), "LatexSympyIntegrate should be registered after tex activation")
   assert_true(command_exists("LatexSympyDet"), "LatexSympyDet should be registered after tex activation")
   assert_true(command_exists("LatexSympyInv"), "LatexSympyInv should be registered after tex activation")
+  assert_true(command_exists("LatexSympyRepeat"), "LatexSympyRepeat should be registered after tex activation")
 
   -- Verify hard defaults that must remain stable.
   local cfg = mod_or_err.get_config()
@@ -51,6 +55,17 @@ local function run_smoke()
   assert_equals(false, cfg.preview_before_apply, "preview_before_apply")
   assert_equals(160, cfg.preview_max_chars, "preview_max_chars")
   assert_equals(true, cfg.drop_stale_results, "drop_stale_results")
+  assert_equals(false, cfg.notify_info, "notify_info")
+  assert_equals(true, cfg.default_keymaps, "default_keymaps")
+  assert_equals("<leader>x", cfg.keymap_prefix, "keymap_prefix")
+  assert_equals(true, cfg.respect_existing_keymaps, "respect_existing_keymaps")
+
+  local visual_equal = vim.fn.maparg("<leader>xe", "x", false, true)
+  local visual_op = vim.fn.maparg("<leader>xo", "x", false, true)
+  local normal_status = vim.fn.maparg("<leader>xS", "n", false, true)
+  assert_true(type(visual_equal.rhs) == "string" and visual_equal.rhs:find("LatexSympyEqual", 1, true) ~= nil, "visual keymap equal")
+  assert_true(type(visual_op.rhs) == "string" and visual_op.rhs:find("LatexSympyOp", 1, true) ~= nil, "visual keymap op")
+  assert_true(type(normal_status.rhs) == "string" and normal_status.rhs:find("LatexSympyStatus", 1, true) ~= nil, "normal keymap status")
 
   io.write("latex_sympy smoke: ok\n")
 end

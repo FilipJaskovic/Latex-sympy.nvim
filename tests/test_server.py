@@ -28,6 +28,24 @@ class ServerOperationTests(unittest.TestCase):
         body = response.get_json()
         self.assertIn("Missing 'op'", body["error"])
 
+    def test_op_params_list_compatibility(self):
+        matrix_text = "\\begin{bmatrix}1 & 2\\\\3 & 4\\end{bmatrix}"
+
+        empty_list_body = self.post_json("/op", {
+            "data": matrix_text,
+            "op": "det",
+            "params": [],
+        }).get_json()
+        self.assertEqual(empty_list_body["error"], "")
+        self.assertEqual(empty_list_body["data"], "-2")
+
+        invalid_list_body = self.post_json("/op", {
+            "data": matrix_text,
+            "op": "det",
+            "params": [1],
+        }).get_json()
+        self.assertIn("object", invalid_list_body["error"].lower())
+
     def test_calculus_operations(self):
         solve_body = self.post_json("/op", {
             "data": "x^2-1=0",
