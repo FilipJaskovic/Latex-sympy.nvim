@@ -3,6 +3,96 @@
 Notable changes
 
 ===============================================================================
+0.8.1 release                                      *latex-sympy-0.8.1*
+
+- Added `:LatexSympyPick[!]` command picker for discovering/running plugin
+  commands without memorizing all names.
+- Picker includes all command groups:
+  core transforms, advanced ops, aliases, and utility commands.
+- Picker flow now supports optional filter stage
+  (disabled by default): category -> filter -> command.
+- Picker now supports guided arg prompts for arg-capable entries with optional
+  raw args fallback.
+- Picker rows now indicate append-capable commands with `[append available]`.
+- Append-capable picker entries now prompt for apply mode:
+  `Replace` or `Append (!)`.
+- Trailing `!` in direct op/alias arguments now auto-converts to bang mode
+  with a one-time syntax hint.
+- Selection-required commands are context-aware in picker lists:
+  hidden by default when unavailable, or shown as `[needs selection]` when
+  configured.
+- Added pluggable picker/input backends:
+  `picker_backend`, `picker_select`, `picker_input`.
+- Added configurable picker UX options:
+  `picker_filter_enabled`, `picker_filter_prompt`,
+  `picker_show_unavailable`, `picker_guided_args`,
+  `picker_guided_args_allow_raw`.
+- Added default visual mapping:
+  `<leader>lp` (tex-only, respects existing mappings).
+- Added success-result notifications for result-producing math commands,
+  with truncated preview via `notify_success_max_chars`.
+
+
+===============================================================================
+0.8.0 (unreleased)                                 *latex-sympy-0.8.0*
+
+- Added full planned feature roadmap coverage to `:LatexSympyOp`:
+  algebra depth (`div`, `gcd`, `sqf`, `groebner`, `resultant`),
+  calculus add-ons (`summation`, `product`),
+  combinatorics (`binomial`, `perm`, `comb`, `partition`, `subsets`),
+  number-theory expansion (`totient`, `mobius`, `divisors`),
+  logic (`logic_simplify`, `sat`),
+  matrix extras (`jordan`, `svd`, `cholesky`),
+  symbol assumptions (`symbol`, `symbols`, `symbols_reset`),
+  geometry (`geometry`, `intersect`, `tangent`, `similar`),
+  physics wrappers (`units`, `mechanics`, `quantum`, `optics`, `pauli`),
+  probability (`dist`, `p`, `e`, `var`, `density`).
+- Added strict parser/backend validation for all new operations.
+- Added server session symbol/distribution registries and reset cleanup.
+- Updated docs, manual examples, and feature inventory to match implementation.
+
+
+===============================================================================
+0.4.0 (unreleased)                                 *latex-sympy-0.4.0*
+
+- Added equation depth operations to `:LatexSympyOp`:
+  `solveset`, `linsolve`, `nonlinsolve`, `rsolve`, `diophantine`.
+- Added matrix depth operations to `:LatexSympyOp`:
+  `eigenvects`, `nullspace`, `charpoly`, `lu`, `qr`, `mat_solve`.
+- Added number-theory starter operations:
+  `isprime`, `factorint`, `primerange`.
+- Added parser/backend validation for solveset domains, primerange integer bounds,
+  and augmented matrix shape for `mat_solve`.
+- Updated docs, manual examples, and feature inventory for these ops.
+
+
+===============================================================================
+0.3.1 (unreleased)                                 *latex-sympy-0.3.1*
+
+- Added algebra essentials operations to `:LatexSympyOp`:
+  `simplify`, `trigsimp`, `ratsimp`, `powsimp`, `apart`, `subs`.
+- Added substitution assignment parsing:
+  `subs x=2 y=3`.
+- Added validation/error-path coverage for malformed `subs`/`apart` payloads.
+- Added docs/manual examples and feature inventory updates for the new ops.
+
+
+===============================================================================
+0.2.1 release                                      *latex-sympy-0.2.1*
+
+- Added `:LatexSympyRepeat[!]` to rerun the last advanced operation.
+- Updated default keymap behavior for tex buffers:
+  visual maps use `<leader>l`, normal maps use `<leader>x`.
+- Added compatibility fix for op payload params:
+  empty params are treated as objects, with legacy empty-list compatibility.
+- Documentation updates:
+  concise README + detailed `doc.md` usage guide.
+- Added manual validation fixture:
+  `tests/manual_feature_checks.tex`.
+- No breaking runtime command/API changes in this release.
+
+
+===============================================================================
 0.2.0 release                                      *latex-sympy-0.2.0*
 
 - Added `:LatexSympyOp[!]` for advanced SymPy operations on selections/ranges.

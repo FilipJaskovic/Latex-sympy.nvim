@@ -33,11 +33,17 @@ x^2 - 1 = 0
 % :LatexSympyOp solve
 x^2 - 4
 
+% :LatexSympyOp solve x y
+x + y - 3
+
 % :LatexSympyOp diff x 2
 x^4 + x^2
 
 % :LatexSympyOp! diff x 2   (append mode)
 x^4 + x^2
+
+% :LatexSympyOp diff x 2 y 1
+x^3 y^2
 
 % :LatexSympyOp integrate x
 x^2
@@ -45,11 +51,62 @@ x^2
 % :LatexSympyOp integrate x 0 1
 x^2
 
+% :LatexSympyOp integrate x 0 1 y 0 2
+x y
+
 % :LatexSympyOp limit x 0 +-
 \frac{\sin(x)}{x}
 
 % :LatexSympyOp series x 0 6
 \sin(x)
+
+% :LatexSympyOp simplify
+(x + 1)^2 - (x^2 + 2x + 1)
+
+% :LatexSympyOp trigsimp
+\sin(x)^2 + \cos(x)^2
+
+% :LatexSympyOp ratsimp
+\frac{1}{x} + \frac{1}{y}
+
+% :LatexSympyOp powsimp
+x^a x^b
+
+% :LatexSympyOp apart x
+\frac{x + 1}{x(x + 2)}
+
+% :LatexSympyOp subs x=2 y=3
+x + y
+
+% :LatexSympyOp nsolve x 1
+x^2 - 2 = 0
+
+% :LatexSympyOp dsolve y(x)
+Derivative(y(x), x) - y(x) = 0
+
+% :LatexSympyOp solve_system x y
+% (select both equations together)
+x + y = 3
+x - y = 1
+
+% :LatexSympyOp solveset x R
+x^2 - 1 = 0
+
+% :LatexSympyOp linsolve x y
+% (select both equations together)
+x + y = 3
+x - y = 1
+
+% :LatexSympyOp nonlinsolve x y
+% (select both equations together)
+x^2 - 1 = 0
+y - 2 = 0
+
+% :LatexSympyOp rsolve a(n)
+a(n+1) - a(n) = 0
+
+% :LatexSympyOp diophantine x y
+2x + 3y = 5
 
 % :LatexSympyOp det
 \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}
@@ -65,6 +122,170 @@ x^2
 
 % :LatexSympyOp eigenvals
 \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}
+
+% :LatexSympyOp eigenvects
+\begin{bmatrix} 2 & 0 \\ 0 & 3 \end{bmatrix}
+
+% :LatexSympyOp nullspace
+\begin{bmatrix} 1 & 2 \\ 2 & 4 \end{bmatrix}
+
+% :LatexSympyOp charpoly t
+\begin{bmatrix} 1 & 0 \\ 0 & 2 \end{bmatrix}
+
+% :LatexSympyOp lu
+\begin{bmatrix} 4 & 3 \\ 6 & 3 \end{bmatrix}
+
+% :LatexSympyOp qr
+\begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}
+
+% :LatexSympyOp mat_solve
+\begin{bmatrix} 2 & 1 & 5 \\ 1 & -1 & 1 \end{bmatrix}
+
+% :LatexSympyOp isprime
+97
+
+% :LatexSympyOp factorint
+360
+
+% :LatexSympyOp primerange 10 20
+0
+
+% :LatexSympyOp div x
+% (select both lines together)
+x^2 - 1
+x - 1
+
+% :LatexSympyOp gcd x
+% (select both lines together)
+x^2 - 1
+x - 1
+
+% :LatexSympyOp sqf x
+(x - 1)^2 (x + 2)
+
+% :LatexSympyOp groebner x y lex
+% (select both lines together)
+x^2 + y
+x - y
+
+% :LatexSympyOp resultant x
+% (select both lines together)
+x^2 + y
+x - y
+
+% :LatexSympyOp summation k 1 n
+k
+
+% :LatexSympyOp product k 1 n
+k
+
+% :LatexSympyOp binomial 5 2
+0
+
+% :LatexSympyOp perm 5 2
+0
+
+% :LatexSympyOp comb 5 2
+0
+
+% :LatexSympyOp partition 8
+0
+
+% :LatexSympyOp subsets 2
+\left\{1, 2, 3\right\}
+
+% :LatexSympyOp totient
+36
+
+% :LatexSympyOp mobius
+30
+
+% :LatexSympyOp divisors true
+24
+
+% :LatexSympyOp logic_simplify simplify
+(A & B) | (A & ~B)
+
+% :LatexSympyOp sat
+A & ~A
+
+% :LatexSympyOp jordan
+\begin{bmatrix} 2 & 1 \\ 0 & 2 \end{bmatrix}
+
+% :LatexSympyOp svd
+\begin{bmatrix} 1 & 0 \\ 0 & 2 \end{bmatrix}
+
+% :LatexSympyOp cholesky
+\begin{bmatrix} 4 & 2 \\ 2 & 3 \end{bmatrix}
+
+% :LatexSympyOp symbol x real=true
+0
+
+% :LatexSympyOp symbols
+0
+
+% :LatexSympyOp symbols_reset
+0
+
+% :LatexSympyOp geometry
+Point(0, 0)
+
+% :LatexSympyOp intersect
+% (select both lines together)
+Line(Point(0, 0), Point(1, 1))
+Line(Point(0, 1), Point(1, 0))
+
+% :LatexSympyOp tangent
+% (select both lines together)
+Circle(Point(0, 0), 5)
+Line(Point(5, 0), Point(5, 1))
+
+% :LatexSympyOp similar
+% (select both lines together)
+Polygon(Point(0, 0), Point(1, 0), Point(0, 1))
+Polygon(Point(0, 0), Point(2, 0), Point(0, 2))
+
+% :LatexSympyOp units simplify
+2*meter + 3*meter
+
+% :LatexSympyOp units convert kilometer/hour
+10*meter/second
+
+% :LatexSympyOp mechanics euler_lagrange q(t)
+Derivative(q(t), t)^2/2 - q(t)^2/2
+
+% :LatexSympyOp quantum dagger
+A*B
+
+% :LatexSympyOp quantum commutator B
+A
+
+% :LatexSympyOp optics lens focal_length=2 u=3
+0
+
+% :LatexSympyOp optics mirror focal_length=2 u=3
+0
+
+% :LatexSympyOp optics refraction 1 1 2
+0
+
+% :LatexSympyOp pauli simplify
+Pauli(1)*Pauli(1)
+
+% :LatexSympyOp dist normal X 0 1
+0
+
+% :LatexSympyOp p
+X > 0
+
+% :LatexSympyOp e
+X
+
+% :LatexSympyOp var
+X
+
+% :LatexSympyOp density
+X
 
 % :LatexSympyRepeat
 % (run this right after any LatexSympyOp / alias command)
@@ -96,6 +317,7 @@ x^2
 % :LatexSympyVariances
 % :LatexSympyReset
 % :LatexSympyToggleComplex
+% :LatexSympyPick
 
 \section*{Python eval (opt-in only)}
 

@@ -7,10 +7,16 @@
 - Convert and simplify LaTeX math expressions.
 - Replace selected expressions with computed results.
 - Append computed results next to existing expressions.
+- Run algebra operations (simplify, trigsimp, ratsimp, powsimp, apart, subs).
 - Run calculus operations (solve, diff, integrate, limit, series).
-- Run matrix operations (det, inv, transpose, rank, eigenvals, rref).
+- Run numeric, differential-equation, and system solving workflows.
+- Run set/system solving workflows (solveset, linsolve, nonlinsolve, diophantine).
+- Run matrix operations (det, inv, transpose, rank, eigenvals/eigenvects, nullspace, charpoly, LU, QR, rref).
+- Run number-theory helpers (isprime, factorint, primerange).
 - Evaluate numerically, factor, and expand expressions.
 - Re-run the previous advanced operation on a new selection.
+- Open a command picker with optional filter, guided args prompts, and raw fallback.
+- Get concise success notifications with a truncated result preview after math commands.
 
 ## Example transformations
 
@@ -42,3 +48,5 @@ Output: -2           % determinant
 ## Full documentation
 
 For installation, configuration, command syntax, keybindings, and troubleshooting, see [`doc.md`](doc.md).
+
+For implemented vs planned SymPy capabilities, see [`FEATURES.md`](FEATURES.md).

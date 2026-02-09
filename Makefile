@@ -1,4 +1,4 @@
-.PHONY: api-documentation download-dependencies llscheck luacheck check-stylua stylua test test-python test-smoke test-ci check-mdformat mdformat coverage-html
+.PHONY: api-documentation download-dependencies llscheck luacheck check-stylua stylua test test-python test-smoke test-parser test-ci check-mdformat mdformat coverage-html
 
 # Git will error if the repository already exists. We ignore the error.
 # NOTE: We still print out that we did the clone to the user so that they know.
@@ -42,13 +42,16 @@ test-python:
 test-smoke:
 	nvim --headless -u NONE -i NONE --cmd "set rtp+=." -l scripts/smoke_test.lua
 
-test-ci: test-python test-smoke
+test-parser:
+	nvim --headless -u NONE -i NONE --cmd "set rtp+=." -l scripts/parser_test.lua
+
+test-ci: test-python test-smoke test-parser
 
 check-mdformat:
-	python -m mdformat --check README.md markdown/manual/docs/index.md
+	python -m mdformat --check README.md doc.md FEATURES.md markdown/manual/docs/index.md
 
 mdformat:
-	python -m mdformat README.md markdown/manual/docs/index.md
+	python -m mdformat README.md doc.md FEATURES.md markdown/manual/docs/index.md
 
 # IMPORTANT: Make sure to run this first
 # ```

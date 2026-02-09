@@ -1,4 +1,4 @@
-# Release Checklist (v0.2.0)
+# Release Checklist
 
 Use this checklist before publishing a release.
 
@@ -16,17 +16,17 @@ Use this checklist before publishing a release.
 
 ## 3) Final docs and metadata checks
 
-- [ ] `CHANGELOG.md` has a `0.2.0` section.
+- [ ] `CHANGELOG.md` has a section for the target release version.
 - [ ] `doc/news.txt` includes release notes and confirms no breaking changes.
-- [ ] `README.md` command/config docs match implementation.
+- [ ] `README.md`, `doc.md`, and `FEATURES.md` are aligned with implementation.
 
 ## 4) Create release commit and tag
 
-- [ ] Commit release hardening changes.
+- [ ] Commit release changes.
 - [ ] Create annotated tag:
 
 ```bash
-git tag -a v0.2.0 -m "Release v0.2.0"
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
 ```
 
 ## 5) Push and publish
@@ -35,7 +35,7 @@ git tag -a v0.2.0 -m "Release v0.2.0"
 - [ ] Push tag:
 
 ```bash
-git push origin v0.2.0
+git push origin vX.Y.Z
 ```
 
 - [ ] Publish GitHub release notes from `CHANGELOG.md`.

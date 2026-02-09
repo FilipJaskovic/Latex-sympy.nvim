@@ -4,6 +4,8 @@ This file is the full usage reference for the plugin.
 
 Use this doc when you want details (all commands, advanced op syntax, keymaps, config behavior, and troubleshooting).
 
+For implemented vs planned feature status, see [`FEATURES.md`](FEATURES.md).
+
 ## What this plugin does
 
 `latex_sympy.nvim` evaluates selected LaTeX math using SymPy and writes results back into your buffer.
@@ -11,7 +13,7 @@ Use this doc when you want details (all commands, advanced op syntax, keymaps, c
 It supports:
 
 - quick transforms (`equal`, `replace`, `numerical`, `factor`, `expand`, `matrix rref`)
-- advanced operations through a generic op command (`solve`, calculus ops, matrix ops)
+- advanced operations through a generic op command (algebra, equation depth, calculus, matrix depth, number theory)
 - server controls and state helpers (`status`, `start/stop/restart`, variances helpers)
 
 ## Runtime behavior
@@ -44,6 +46,16 @@ It supports:
     keymap_prefix = "<leader>l",
     normal_keymap_prefix = "<leader>x",
     respect_existing_keymaps = true,
+    picker_backend = "vim_ui",
+    picker_select = nil,
+    picker_input = nil,
+    picker_filter_enabled = false,
+    picker_filter_prompt = "latex_sympy filter (optional):",
+    picker_show_unavailable = false,
+    picker_guided_args = "all",
+    picker_guided_args_allow_raw = true,
+    notify_success = true,
+    notify_success_max_chars = 120,
   },
   config = function(_, opts)
     require("latex_sympy").setup(opts)
@@ -91,39 +103,193 @@ Behavior:
 
 - without `!`: replace mode
 - with `!`: append mode (` = <result>`)
+- if you type a trailing `!` as an argument (for example `:LatexSympyOp det !`), it is auto-converted to bang mode once and shows a syntax hint.
 
 Supported ops:
 
-- `solve [var]`
+- `simplify`
+  - symbolic simplification using SymPy `simplify(...)`
+- `trigsimp`
+  - trigonometric simplification
+- `ratsimp`
+  - rational expression simplification
+- `powsimp`
+  - power simplification/combination
+- `apart [var]`
+  - partial fraction decomposition
+  - if `var` omitted, SymPy chooses decomposition variable
+- `subs <symbol>=<value> [<symbol>=<value> ...]`
+  - substitution assignments are whitespace-separated tokens
+  - example: `subs x=2 y=3`
+- `solveset [var] [domain]`
+  - solves expression/equation as set
+  - `domain` allowed: `C`, `R`, `Z`, `N` (default `C`)
+- `linsolve [var ...]`
+  - solves newline/semicolon-separated linear equation systems
+  - if vars omitted, they are inferred from system symbols
+- `nonlinsolve [var ...]`
+  - solves newline/semicolon-separated nonlinear equation systems
+  - if vars omitted, they are inferred from system symbols
+- `rsolve [func]`
+  - solves recurrence equations
+  - optional function target (for example `a(n)`)
+- `diophantine [var ...]`
+  - solves a single integer equation
+  - if vars omitted, SymPy uses inferred symbol ordering
+- `solve [var ...]`
   - with equation input (`lhs = rhs`): solves equation
   - without `=`: solves expression as `expression = 0`
-  - if `var` omitted: first free symbol is used
-- `diff [var] [order]`
+  - supports multiple variables (`solve x y`)
+  - if variables omitted: first free symbol is used
+- `solve_system [var ...]`
+  - solves newline/semicolon-separated equations from the selected text
+  - if variables are omitted, they are inferred from equation symbols
+- `diff [var] [order]` or chained form `diff x 2 y 1`
   - defaults: first free symbol, order `1`
   - one integer argument is treated as `order`
-- `integrate [var] [lower] [upper]`
+- `integrate [var] [lower] [upper]` or repeated triplets
   - no args: indefinite integral with inferred symbol
   - one arg: indefinite integral in given variable
   - three args: definite integral `(var, lower, upper)`
+  - repeated triplets: `integrate x 0 1 y 0 2`
 - `limit <var> <point> [dir]`
   - `dir` allowed: `+`, `-`, `+-` (default `+-`)
 - `series <var> <point> <order>`
   - order must be positive integer
   - big-O term is removed before returning result
+- `nsolve <var> <guess> [guess2]`
+  - numeric root solving
+- `dsolve [func]`
+  - differential equation solving, optional function target (for example `y(x)`)
+  - derivative-heavy equations are most reliable with SymPy-style input, e.g. `Derivative(y(x), x) - y(x) = 0`
 - `det`
 - `inv`
 - `transpose`
 - `rank`
 - `eigenvals`
   - matrix ops require matrix input
+- `eigenvects`
+  - matrix eigenvector decomposition
+- `nullspace`
+  - matrix nullspace basis
+- `charpoly [var]`
+  - characteristic polynomial in `var` (default `lambda`)
+- `lu`
+  - LU decomposition output (`L`, `U`, permutation data)
+- `qr`
+  - QR decomposition output (`Q`, `R`)
+- `mat_solve`
+  - solves augmented matrix `[A|b]` (last column is RHS vector)
+- `isprime`
+  - primality test for integer input
+- `factorint`
+  - integer prime factorization map
+- `primerange <start> <stop>`
+  - list primes in range `[start, stop)`
+- `div [var]`
+  - polynomial division of two selected expressions (selection must contain exactly two expressions split by newline or `;`)
+- `gcd [var]`
+  - polynomial gcd of two selected expressions
+- `sqf [var]`
+  - square-free decomposition
+- `groebner <var...> [order]`
+  - Grobner basis for selected polynomial list (split by newline or `;`)
+  - `order` allowed: `lex`, `grlex`, `grevlex`
+- `resultant <var>`
+  - resultant of two selected expressions
+- `summation <var> <lower> <upper>`
+  - symbolic finite summation
+- `product <var> <lower> <upper>`
+  - symbolic finite product
+- `binomial <n> <k>`
+- `perm <n> [k]`
+- `comb <n> <k>`
+- `partition <n>`
+- `subsets [k]`
+  - selected text must be a finite set/list (or newline/semicolon-separated values)
+- `totient`
+- `mobius`
+- `divisors [proper]`
+  - `proper` accepts `true|false` (default `false`)
+- `logic_simplify [form]`
+  - `form` allowed: `simplify`, `cnf`, `dnf`
+- `sat`
+  - SAT model check for selected boolean expression
+- `jordan`
+- `svd`
+- `cholesky`
+  - matrix-only ops
+- `symbol <name> [assumption=bool ...]`
+  - registers symbol assumptions for parser/session
+  - allowed assumptions: `commutative`, `real`, `integer`, `positive`, `nonnegative`
+- `symbols`
+  - show registered symbol assumptions
+- `symbols_reset`
+  - clear registered symbol assumptions
+- `geometry`
+  - parse/normalize selected geometry constructors (`Point(...)`, `Line(...)`, ...)
+- `intersect`
+- `tangent`
+- `similar`
+  - geometry comparisons on exactly two selected geometry objects
+- `units simplify`
+- `units convert <target>`
+  - unit simplification/conversion via SymPy units module
+- `mechanics euler_lagrange <q...>`
+  - Euler-Lagrange equations from selected Lagrangian expression
+- `quantum dagger`
+- `quantum commutator <expr2>`
+- `optics lens <k=v> <k=v>`
+- `optics mirror <k=v> <k=v>`
+- `optics refraction <incident> <n1> <n2>`
+- `pauli simplify`
+- `dist <kind> <name> <params...>`
+  - supported kinds: `normal`, `uniform`, `bernoulli`, `binomial`, `hypergeometric`
+  - registers RV in server session
+- `p`
+- `e`
+- `var`
+- `density`
+  - probability/expectation/variance/density over selected expression (can use registered `dist` RVs)
+
+## Command picker
+
+- `:LatexSympyPick[!]`
+  - opens a staged picker (`Category` -> `Command` by default)
+  - optional filter stage can be enabled: (`Category` -> `Filter` -> `Command`)
+  - categories are descriptive:
+    - `All - Everything`
+    - `Core - Quick transforms (equal/replace/factor/expand/rref)`
+    - `Ops - Advanced SymPy operations`
+    - `Aliases - Shortcuts to common ops`
+  - `Utility - Server/status/session helpers`
+  - every row is shown as `name - purpose`
+  - rows that need required args include `[args: ...]`
+  - append-capable rows include `[append available]`
+  - selecting an append-capable row prompts `Replace` or `Append (!)`, unless picker was opened with `!` (forced append)
+  - filter query matches label, description, op name, and args hint (case-insensitive)
+  - selection-required rows are hidden when no selection/range exists (default behavior)
+  - optional config can show them as `[needs selection]`
+  - guided args mode prompts per argument field for arg-capable ops
+  - raw args fallback stays available when guided args are enabled
+  - forwards `!` to op/alias executions (append mode where supported)
+  - ignores `!` for non-op commands
+
+## Success notifications
+
+- result-producing math commands show concise success notifications by default:
+  - core transforms
+  - `LatexSympyOp`, aliases, and repeat
+  - `LatexSympyPython`
+- notification includes command context and truncated result preview
 
 ## Alias commands
 
 These call `LatexSympyOp` internally:
 
-- `:LatexSympySolve[!] [var]`
-- `:LatexSympyDiff[!] [var] [order]`
-- `:LatexSympyIntegrate[!] [var] [lower] [upper]`
+- `:LatexSympySolve[!] [var ...]`
+- `:LatexSympyDiff[!] [var] [order]` (also supports chained form)
+- `:LatexSympyIntegrate[!] [var] [lower] [upper]` (also supports repeated triplets)
 - `:LatexSympyDet[!]`
 - `:LatexSympyInv[!]`
 
@@ -141,6 +307,7 @@ These call `LatexSympyOp` internally:
   - inserts current variances map at cursor
 - `:LatexSympyReset`
   - resets variances map
+  - clears session symbol assumptions (`symbol`) and registered random variables (`dist`)
 - `:LatexSympyToggleComplex`
   - toggles complex-number behavior for variances
 - `:LatexSympyPython`
@@ -184,6 +351,7 @@ Visual mode mappings:
 - `<leader>lt` -> `LatexSympyDet`
 - `<leader>lv` -> `LatexSympyInv`
 - `<leader>la` -> `LatexSympyRepeat`
+- `<leader>lp` -> `LatexSympyPick`
 
 Normal mode mappings:
 
@@ -243,6 +411,27 @@ require("latex_sympy").setup({
   - normal-mode prefix used by default keymap set
 - `respect_existing_keymaps` (`true`)
   - do not override existing user mappings
+- `picker_backend` (`"vim_ui"`)
+  - picker backend: `"vim_ui"`, `"auto"`, `"snacks"`
+- `picker_select` (`nil`)
+  - optional picker override callback: `function(items, opts, on_choice)`
+- `picker_input` (`nil`)
+  - optional input override callback: `function(opts, on_confirm)`
+- `picker_filter_enabled` (`false`)
+  - prompt for an optional text filter before command selection
+- `picker_filter_prompt` (`"latex_sympy filter (optional):"`)
+  - filter input prompt text
+- `picker_show_unavailable` (`false`)
+  - when `true`, keep selection-required rows visible as `[needs selection]`
+- `picker_guided_args` (`"all"`)
+  - `"all"`: guided arg prompts for arg-capable entries
+  - `"off"`: disable guided args and use raw args prompt only
+- `picker_guided_args_allow_raw` (`true`)
+  - allow fallback to raw args prompt if guided collection fails/cancelled
+- `notify_success` (`true`)
+  - show success notifications for result-producing commands
+- `notify_success_max_chars` (`120`)
+  - max characters in success result preview text
 
 ## Requirements
 
@@ -273,6 +462,10 @@ Health check:
 - Error: `'params' must be an object` (usually old client payload behavior)
   - update plugin to latest version
   - this version sends empty params correctly as `{}` and server accepts legacy `[]` compatibility only when empty
+
+- Error while using `dsolve` with derivative LaTeX
+  - use SymPy-style derivative equation text in the selection:
+  - `Derivative(y(x), x) - y(x) = 0`
 
 - Error: `Server is not reachable` / timeout
   - run `:LatexSympyStatus`
