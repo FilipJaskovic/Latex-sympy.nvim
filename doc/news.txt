@@ -3,6 +3,21 @@
 Notable changes
 
 ===============================================================================
+0.2.0 release                                      *latex-sympy-0.2.0*
+
+- Added `:LatexSympyOp[!]` for advanced SymPy operations on selections/ranges.
+- Added alias commands:
+  `:LatexSympySolve`, `:LatexSympyDiff`, `:LatexSympyIntegrate`,
+  `:LatexSympyDet`, `:LatexSympyInv`.
+- Added operation support for solve, calculus, and matrix workflows through `/op`.
+- Added config controls:
+  `timeout_ms`, `preview_before_apply`, `preview_max_chars`,
+  `drop_stale_results`.
+- Added backend test coverage and headless Neovim smoke checks for release hardening.
+- No breaking runtime command/API changes in this release.
+
+
+===============================================================================
 Initial release                                     *latex-sympy-new-features*
 
 - Basic LaTeX -> SymPy evaluation

@@ -1,0 +1,5 @@
+.DS_Store
+.nvimlog
+__pycache__/
+tests/__pycache__/
+*.pyc

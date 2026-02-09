@@ -1,4 +1,4 @@
-.PHONY: api-documentation download-dependencies llscheck luacheck stylua test
+.PHONY: api-documentation download-dependencies llscheck luacheck check-stylua stylua test test-python test-smoke test-ci check-mdformat mdformat coverage-html
 
 # Git will error if the repository already exists. We ignore the error.
 # NOTE: We still print out that we did the clone to the user so that they know.
@@ -12,11 +12,11 @@ endif
 CONFIGURATION = .luarc.json
 
 download-dependencies:
-	git clone git@github.com:Bilal2453/luvit-meta.git .dependencies/luvit-meta $(IGNORE_EXISTING)
-	git clone git@github.com:ColinKennedy/mega.cmdparse.git .dependencies/mega.cmdparse $(IGNORE_EXISTING)
-	git clone git@github.com:ColinKennedy/mega.logging.git .dependencies/mega.logging $(IGNORE_EXISTING)
-	git clone git@github.com:LuaCATS/busted.git .dependencies/busted $(IGNORE_EXISTING)
-	git clone git@github.com:LuaCATS/luassert.git .dependencies/luassert $(IGNORE_EXISTING)
+	git clone https://github.com/Bilal2453/luvit-meta.git .dependencies/luvit-meta $(IGNORE_EXISTING)
+	git clone https://github.com/ColinKennedy/mega.cmdparse.git .dependencies/mega.cmdparse $(IGNORE_EXISTING)
+	git clone https://github.com/ColinKennedy/mega.logging.git .dependencies/mega.logging $(IGNORE_EXISTING)
+	git clone https://github.com/LuaCATS/busted.git .dependencies/busted $(IGNORE_EXISTING)
+	git clone https://github.com/LuaCATS/luassert.git .dependencies/luassert $(IGNORE_EXISTING)
 
 api-documentation:
 	nvim -u scripts/make_api_documentation/minimal_init.lua -l scripts/make_api_documentation/main.lua
@@ -35,6 +35,14 @@ stylua:
 
 test: download-dependencies
 	busted .
+
+test-python:
+	python3 -m unittest discover -s tests -p 'test_server.py' -v
+
+test-smoke:
+	nvim --headless -u NONE -i NONE --cmd "set rtp+=." -l scripts/smoke_test.lua
+
+test-ci: test-python test-smoke
 
 check-mdformat:
 	python -m mdformat --check README.md markdown/manual/docs/index.md

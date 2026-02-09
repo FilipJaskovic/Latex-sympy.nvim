@@ -37,6 +37,8 @@ require("latex_sympy").setup({
   auto_install = false,
   port = 7395,
   enable_python_eval = false,
+  notify_startup = true,
+  startup_notify_once = true,
   server_start_mode = "on_demand", -- or "on_activate"
   timeout_ms = 5000,
   preview_before_apply = false,
