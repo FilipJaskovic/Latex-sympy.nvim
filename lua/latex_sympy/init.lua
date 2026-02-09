@@ -30,6 +30,9 @@ local DEFAULT_CONFIG = {
 }
 
 local OP_NAMES = {
+  perm_group = true,
+  prufer = true,
+  gray = true,
   div = true,
   gcd = true,
   sqf = true,
@@ -137,7 +140,28 @@ local DIST_KINDS = {
   hypergeometric = true,
 }
 
+local PERM_GROUP_ACTIONS = {
+  order = true,
+  orbits = true,
+  is_transitive = true,
+  stabilizer = true,
+}
+
+local PRUFER_ACTIONS = {
+  encode = true,
+  decode = true,
+}
+
+local GRAY_ACTIONS = {
+  sequence = true,
+  bin_to_gray = true,
+  gray_to_bin = true,
+}
+
 local OP_ARGS_HINTS = {
+  perm_group = "<order|orbits|is_transitive|stabilizer> [point]",
+  prufer = "<encode|decode> [n]",
+  gray = "<sequence|bin_to_gray|gray_to_bin> <value>",
   div = "[var]",
   gcd = "[var]",
   sqf = "[var]",
@@ -179,6 +203,9 @@ local OP_ARGS_HINTS = {
 }
 
 local OP_DESCRIPTIONS = {
+  perm_group = "Permutation group analysis from generators",
+  prufer = "Encode/decode Prufer sequences for trees",
+  gray = "Gray code conversion and sequence generation",
   div = "Polynomial division quotient and remainder",
   gcd = "Greatest common divisor of two expressions",
   sqf = "Square-free decomposition",
@@ -252,6 +279,9 @@ local OP_DESCRIPTIONS = {
 }
 
 local OP_REQUIRES_ARGS = {
+  perm_group = true,
+  prufer = true,
+  gray = true,
   resultant = true,
   summation = true,
   product = true,
@@ -273,6 +303,24 @@ local OP_REQUIRES_ARGS = {
 }
 
 local PICKER_GUIDED_ARGS_SCHEMA = {
+  perm_group = {
+    fields = {
+      { key = "action", prompt = "action (order, orbits, is_transitive, stabilizer)", optional = false },
+      { key = "point", prompt = "point (required for stabilizer)", optional = true },
+    },
+  },
+  prufer = {
+    fields = {
+      { key = "action", prompt = "action (encode or decode)", optional = false },
+      { key = "n", prompt = "node count n (required for encode)", optional = true },
+    },
+  },
+  gray = {
+    fields = {
+      { key = "action", prompt = "action (sequence, bin_to_gray, gray_to_bin)", optional = false },
+      { key = "value", prompt = "value (n or binary string)", optional = false },
+    },
+  },
   solve = {
     fields = {
       { key = "vars", prompt = "variables (space-separated)", optional = true, split = true },
@@ -1231,6 +1279,92 @@ local function parse_operation_args(op_name, args)
   local params = {}
   local count = #args
 
+  if op == "perm_group" then
+    if count < 1 or count > 2 then
+      return nil, "perm_group expects: <order|orbits|is_transitive|stabilizer> [point]"
+    end
+
+    local action = string.lower(vim.trim(args[1] or ""))
+    if not PERM_GROUP_ACTIONS[action] then
+      return nil, "perm_group action must be one of: order, orbits, is_transitive, stabilizer"
+    end
+
+    params.action = action
+    if action == "stabilizer" then
+      if count ~= 2 then
+        return nil, "perm_group stabilizer expects: stabilizer <point>"
+      end
+      local point = parse_int(args[2])
+      if point == nil or point < 0 then
+        return nil, "perm_group stabilizer point must be a non-negative integer"
+      end
+      params.point = point
+      return params
+    end
+
+    if count ~= 1 then
+      return nil, "perm_group " .. action .. " does not accept extra arguments"
+    end
+    return params
+  end
+
+  if op == "prufer" then
+    if count < 1 or count > 2 then
+      return nil, "prufer expects: <encode|decode> [n]"
+    end
+
+    local action = string.lower(vim.trim(args[1] or ""))
+    if not PRUFER_ACTIONS[action] then
+      return nil, "prufer action must be one of: encode, decode"
+    end
+    params.action = action
+
+    if action == "encode" then
+      if count ~= 2 then
+        return nil, "prufer encode expects: encode <n>"
+      end
+      local n = parse_int(args[2])
+      if n == nil or n <= 0 then
+        return nil, "prufer encode n must be a positive integer"
+      end
+      params.n = n
+      return params
+    end
+
+    if count ~= 1 then
+      return nil, "prufer decode does not accept extra arguments"
+    end
+    return params
+  end
+
+  if op == "gray" then
+    if count ~= 2 then
+      return nil, "gray expects: <sequence|bin_to_gray|gray_to_bin> <value>"
+    end
+
+    local action = string.lower(vim.trim(args[1] or ""))
+    if not GRAY_ACTIONS[action] then
+      return nil, "gray action must be one of: sequence, bin_to_gray, gray_to_bin"
+    end
+    params.action = action
+
+    local value = vim.trim(tostring(args[2] or ""))
+    if action == "sequence" then
+      local n = parse_int(value)
+      if n == nil or n <= 0 then
+        return nil, "gray sequence value must be a positive integer"
+      end
+      params.value = n
+      return params
+    end
+
+    if value == "" or not string.match(value, "^[01]+$") then
+      return nil, "gray value must be a binary string for bin_to_gray/gray_to_bin"
+    end
+    params.value = value
+    return params
+  end
+
   if op == "div" or op == "gcd" or op == "sqf" then
     if count > 1 then
       return nil, op .. " expects: [var]"
@@ -1919,11 +2053,33 @@ local function clear_applied_default_keymaps()
   applied_default_keymaps = {}
 end
 
+local function normalize_keymap_lhs(lhs)
+  if type(lhs) ~= "string" then
+    return lhs
+  end
+
+  if vim.keycode then
+    local ok_keycode, keycoded = pcall(vim.keycode, lhs)
+    if ok_keycode and type(keycoded) == "string" then
+      return keycoded
+    end
+  end
+
+  local ok_termcodes, termcoded = pcall(vim.api.nvim_replace_termcodes, lhs, true, true, true)
+  if ok_termcodes and type(termcoded) == "string" then
+    return termcoded
+  end
+
+  return lhs
+end
+
 local function keymap_exists(bufnr, mode, lhs)
+  local target_lhs = normalize_keymap_lhs(lhs)
+
   local ok_buf, buf_maps = pcall(vim.api.nvim_buf_get_keymap, bufnr, mode)
   if ok_buf and type(buf_maps) == "table" then
     for _, map in ipairs(buf_maps) do
-      if map.lhs == lhs then
+      if normalize_keymap_lhs(map.lhs) == target_lhs then
         return true
       end
     end
@@ -1932,7 +2088,7 @@ local function keymap_exists(bufnr, mode, lhs)
   local ok_global, global_maps = pcall(vim.api.nvim_get_keymap, mode)
   if ok_global and type(global_maps) == "table" then
     for _, map in ipairs(global_maps) do
-      if map.lhs == lhs then
+      if normalize_keymap_lhs(map.lhs) == target_lhs then
         return true
       end
     end

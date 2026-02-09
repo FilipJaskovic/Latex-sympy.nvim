@@ -236,6 +236,12 @@ describe("operation parsing", function()
     assert.same({ n = "8" }, mod._parse_operation_args_for_tests("partition", { "8" }))
     assert.same({ k = 2 }, mod._parse_operation_args_for_tests("subsets", { "2" }))
     assert.same({ proper = true }, mod._parse_operation_args_for_tests("divisors", { "true" }))
+    assert.same({ action = "order" }, mod._parse_operation_args_for_tests("perm_group", { "order" }))
+    assert.same({ action = "stabilizer", point = 0 }, mod._parse_operation_args_for_tests("perm_group", { "stabilizer", "0" }))
+    assert.same({ action = "encode", n = 4 }, mod._parse_operation_args_for_tests("prufer", { "encode", "4" }))
+    assert.same({ action = "decode" }, mod._parse_operation_args_for_tests("prufer", { "decode" }))
+    assert.same({ action = "sequence", value = 3 }, mod._parse_operation_args_for_tests("gray", { "sequence", "3" }))
+    assert.same({ action = "bin_to_gray", value = "1011" }, mod._parse_operation_args_for_tests("gray", { "bin_to_gray", "1011" }))
 
     assert.same({ form = "cnf" }, mod._parse_operation_args_for_tests("logic_simplify", { "cnf" }))
     assert.same({}, mod._parse_operation_args_for_tests("sat", {}))
@@ -347,11 +353,35 @@ describe("operation parsing", function()
 
     local _, err_prob = mod._parse_operation_args_for_tests("p", { "x" })
     assert.is_truthy(err_prob)
+
+    local _, err_perm_group_action = mod._parse_operation_args_for_tests("perm_group", { "bad" })
+    assert.is_truthy(err_perm_group_action)
+
+    local _, err_perm_group_point = mod._parse_operation_args_for_tests("perm_group", { "stabilizer" })
+    assert.is_truthy(err_perm_group_point)
+
+    local _, err_perm_group_point_type = mod._parse_operation_args_for_tests("perm_group", { "stabilizer", "bad" })
+    assert.is_truthy(err_perm_group_point_type)
+
+    local _, err_prufer_encode = mod._parse_operation_args_for_tests("prufer", { "encode" })
+    assert.is_truthy(err_prufer_encode)
+
+    local _, err_prufer_decode = mod._parse_operation_args_for_tests("prufer", { "decode", "4" })
+    assert.is_truthy(err_prufer_decode)
+
+    local _, err_gray_action = mod._parse_operation_args_for_tests("gray", { "bad", "101" })
+    assert.is_truthy(err_gray_action)
+
+    local _, err_gray_value = mod._parse_operation_args_for_tests("gray", { "bin_to_gray", "abc" })
+    assert.is_truthy(err_gray_value)
+
+    local _, err_gray_sequence = mod._parse_operation_args_for_tests("gray", { "sequence", "0" })
+    assert.is_truthy(err_gray_sequence)
   end)
 
-  it("includes new ops in completion", function()
+  it("includes new ops in completion with empty prefix", function()
     local mod = require("latex_sympy")
-    local values = mod._completion_for_ops_for_tests("s")
+    local values = mod._completion_for_ops_for_tests("")
 
     assert.is_true(vim.tbl_contains(values, "simplify"))
     assert.is_true(vim.tbl_contains(values, "subs"))
@@ -362,6 +392,26 @@ describe("operation parsing", function()
     assert.is_true(vim.tbl_contains(values, "logic_simplify"))
     assert.is_true(vim.tbl_contains(values, "units"))
     assert.is_true(vim.tbl_contains(values, "dist"))
+    assert.is_true(vim.tbl_contains(values, "perm_group"))
+    assert.is_true(vim.tbl_contains(values, "prufer"))
+    assert.is_true(vim.tbl_contains(values, "gray"))
+  end)
+
+  it("filters completion by prefix", function()
+    local mod = require("latex_sympy")
+    local values = mod._completion_for_ops_for_tests("s")
+
+    assert.is_true(#values > 0)
+    for _, value in ipairs(values) do
+      assert.is_true(vim.startswith(value, "s"), value)
+    end
+
+    assert.is_true(vim.tbl_contains(values, "simplify"))
+    assert.is_true(vim.tbl_contains(values, "solve"))
+    assert.is_true(vim.tbl_contains(values, "solveset"))
+    assert.is_false(vim.tbl_contains(values, "groebner"))
+    assert.is_false(vim.tbl_contains(values, "dist"))
+    assert.is_false(vim.tbl_contains(values, "perm_group"))
   end)
 
   it("maps bang to append mode", function()
@@ -391,7 +441,9 @@ describe("operation parsing", function()
       assert.equals("dict", vim.type(normalized))
     else
       local encoded = vim.fn.json_encode({ params = normalized })
-      assert.is_true(encoded:find([["params":{}]], 1, true) ~= nil)
+      local compact = encoded:gsub("%s+", "")
+      assert.is_true(compact:find([["params":{}]], 1, true) ~= nil)
+      assert.is_true(compact:find("\"params\":[]", 1, true) == nil)
     end
   end)
 end)
@@ -434,6 +486,10 @@ describe("default keymaps", function()
 
   it("respects existing mappings when configured", function()
     vim.keymap.set("x", "<leader>le", "<Cmd>echo 'keep'<CR>", { silent = true })
+
+    local existing = vim.fn.maparg("<leader>le", "x", false, true)
+    assert.is_true(tostring(existing.rhs):find("echo", 1, true) ~= nil)
+
     require("plugin.plugin")
     vim.api.nvim_exec_autocmds("FileType", { pattern = "tex", modeline = false })
 
@@ -510,11 +566,15 @@ describe("picker behavior", function()
     local mod = require("latex_sympy")
     local entries = mod._picker_entries_for_tests()
     local primerange_row
+    local perm_group_row
     local simplify_row
 
     for _, entry in ipairs(entries) do
       if entry.label == "Op: primerange" then
         primerange_row = mod._format_picker_item_for_tests(entry)
+      end
+      if entry.label == "Op: perm_group" then
+        perm_group_row = mod._format_picker_item_for_tests(entry)
       end
       if entry.label == "Op: simplify" then
         simplify_row = mod._format_picker_item_for_tests(entry)
@@ -525,6 +585,10 @@ describe("picker behavior", function()
     assert.is_true(primerange_row:find("Op: primerange - List primes in an integer range", 1, true) ~= nil)
     assert.is_true(primerange_row:find("[args: <start> <stop>]", 1, true) ~= nil)
     assert.is_true(primerange_row:find("[append available]", 1, true) ~= nil)
+
+    assert.is_true(type(perm_group_row) == "string")
+    assert.is_true(perm_group_row:find("Permutation group analysis from generators", 1, true) ~= nil)
+    assert.is_true(perm_group_row:find("[args: <order|orbits|is_transitive|stabilizer> [point]]", 1, true) ~= nil)
 
     assert.is_true(type(simplify_row) == "string")
     assert.is_true(simplify_row:find("Op: simplify - General symbolic simplification", 1, true) ~= nil)

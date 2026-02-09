@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+- No changes yet.
+
+## 0.9.0 - 2026-02-09
+
+- Added combinatorics structure operations to `:LatexSympyOp`:
+  - `perm_group <order|orbits|is_transitive|stabilizer> [point]`
+  - `prufer <encode|decode> [n]`
+  - `gray <sequence|bin_to_gray|gray_to_bin> <value>`
+- Added strict parser/backend validation for list-based permutation, edge, code, and binary-string contracts.
+- Expanded automated test coverage:
+  - full Lua suite (`make test`) now passes
+  - release gate (`make test-ci`) remains green
+- Reworked docs for clearer audience split:
+  - `README.md` simplified for GitHub landing + quick install
+  - `doc.md` expanded installation section (lazy.nvim, native packages, LazyVim)
+  - `FEATURES.md` converted into exhaustive feature reference with examples
+- Added explicit link paths in docs to:
+  - `tests/manual_feature_checks.tex`
+  - full installation section in `doc.md`
+  - complete feature reference in `FEATURES.md`
+
 ## 0.8.1 - 2026-02-09
 
 - Added `:LatexSympyPick[!]` command picker to browse and run all plugin commands.

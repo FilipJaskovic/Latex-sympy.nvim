@@ -15,6 +15,9 @@ from latex2sympy2 import (
     var,
     variances,
 )
+from sympy.combinatorics import Permutation, PermutationGroup
+from sympy.combinatorics.graycode import GrayCode, bin_to_gray, gray_to_bin
+from sympy.combinatorics.prufer import Prufer
 from sympy.functions.combinatorial.numbers import nC, nP
 from sympy.geometry import Circle, Ellipse, Line, Point, Polygon, Ray, Segment
 from sympy.geometry.entity import GeometryEntity
@@ -43,6 +46,9 @@ LOGIC_FORMS = {"simplify", "cnf", "dnf"}
 SYMBOL_ASSUMPTION_KEYS = {"commutative", "real", "integer", "positive", "nonnegative"}
 DISTRIBUTION_KINDS = {"normal", "uniform", "bernoulli", "binomial", "hypergeometric"}
 OPTICS_OPTION_KEYS = {"focal_length", "u", "v"}
+PERM_GROUP_ACTIONS = {"order", "orbits", "is_transitive", "stabilizer"}
+PRUFER_ACTIONS = {"encode", "decode"}
+GRAY_ACTIONS = {"sequence", "bin_to_gray", "gray_to_bin"}
 
 REGISTERED_SYMBOLS: dict[str, sp.Symbol] = {}
 REGISTERED_SYMBOL_ASSUMPTIONS: dict[str, dict[str, bool]] = {}
@@ -291,6 +297,64 @@ def _parse_int_value(value: Any, name: str) -> int:
         return int(value)
     except Exception as exc:
         raise ValueError(f"{name} must be an integer") from exc
+
+
+def _parse_int_sequence_value(value: Any, name: str) -> list[int]:
+    parsed = value
+    if isinstance(parsed, str):
+        text = parsed.strip()
+        if text == "":
+            raise ValueError(f"{name} must be a non-empty integer list")
+        try:
+            parsed = sp.sympify(text)
+        except Exception as exc:
+            raise ValueError(f"{name} must be a valid integer list") from exc
+
+    if isinstance(parsed, tuple):
+        parsed = list(parsed)
+
+    if not isinstance(parsed, list) or len(parsed) == 0:
+        raise ValueError(f"{name} must be a non-empty integer list")
+
+    out: list[int] = []
+    for index, item in enumerate(parsed, start=1):
+        out.append(_parse_int_value(item, f"{name}[{index}]"))
+    return out
+
+
+def _parse_permutation_generators(data: str) -> list[Permutation]:
+    parts = _split_expression_inputs(data, "perm_group", min_count=1)
+    generators: list[Permutation] = []
+    for index, part in enumerate(parts, start=1):
+        values = _parse_int_sequence_value(part, f"generator #{index}")
+        try:
+            generators.append(Permutation(values))
+        except Exception as exc:
+            raise ValueError(f"Invalid permutation generator #{index}") from exc
+    return generators
+
+
+def _parse_prufer_edges(data: str) -> list[list[int]]:
+    parts = _split_expression_inputs(data, "prufer", min_count=1)
+    edges: list[list[int]] = []
+    for index, part in enumerate(parts, start=1):
+        values = _parse_int_sequence_value(part, f"edge #{index}")
+        if len(values) != 2:
+            raise ValueError("prufer encode expects edges formatted as [u,v]")
+        edges.append([values[0], values[1]])
+    return edges
+
+
+def _parse_prufer_code(data: str) -> list[int]:
+    parts = _split_expression_inputs(data, "prufer", exact_count=1)
+    return _parse_int_sequence_value(parts[0], "prufer code")
+
+
+def _parse_binary_string(value: Any, name: str) -> str:
+    token = str(value).strip()
+    if token == "" or any(char not in {"0", "1"} for char in token):
+        raise ValueError(f"{name} must be a binary string containing only 0 and 1")
+    return token
 
 
 def _parse_bool_value(value: Any, name: str) -> bool:
@@ -955,6 +1019,74 @@ def _op_primerange(_: str, params: dict[str, Any]) -> str:
     return _to_latex(list(sp.primerange(start, stop)))
 
 
+def _op_perm_group(data: str, params: dict[str, Any]) -> str:
+    _ensure_allowed_params(params, "perm_group", {"action", "point"})
+    action = str(params.get("action", "")).strip().lower()
+    if action not in PERM_GROUP_ACTIONS:
+        raise ValueError("perm_group action must be one of: order, orbits, is_transitive, stabilizer")
+
+    generators = _parse_permutation_generators(data)
+    group = PermutationGroup(*generators)
+
+    if action == "order":
+        return _to_latex(group.order())
+    if action == "orbits":
+        orbits = [sorted(int(item) for item in orbit) for orbit in group.orbits()]
+        orbits.sort(key=lambda orbit: (len(orbit), orbit))
+        return _to_latex(orbits)
+    if action == "is_transitive":
+        return str(bool(group.is_transitive()))
+
+    if "point" not in params:
+        raise ValueError("perm_group stabilizer expects: stabilizer <point>")
+    point = _parse_int_value(params.get("point"), "point")
+    if point < 0:
+        raise ValueError("point must be non-negative")
+    stabilizer = group.stabilizer(point)
+    return _to_latex({
+        "order": stabilizer.order(),
+        "generators": [list(gen.array_form) for gen in stabilizer.generators],
+    })
+
+
+def _op_prufer(data: str, params: dict[str, Any]) -> str:
+    _ensure_allowed_params(params, "prufer", {"action", "n"})
+    action = str(params.get("action", "")).strip().lower()
+    if action not in PRUFER_ACTIONS:
+        raise ValueError("prufer action must be one of: encode, decode")
+
+    if action == "encode":
+        if "n" not in params:
+            raise ValueError("prufer encode expects: encode <n>")
+        n_value = _parse_positive_int(params.get("n"), "n")
+        edges = _parse_prufer_edges(data)
+        return _to_latex(Prufer.to_prufer(edges, n_value))
+
+    if "n" in params and params.get("n") is not None:
+        raise ValueError("prufer decode does not accept n")
+    code = _parse_prufer_code(data)
+    return _to_latex(Prufer.to_tree(code))
+
+
+def _op_gray(_: str, params: dict[str, Any]) -> str:
+    _ensure_allowed_params(params, "gray", {"action", "value"})
+    action = str(params.get("action", "")).strip().lower()
+    if action not in GRAY_ACTIONS:
+        raise ValueError("gray action must be one of: sequence, bin_to_gray, gray_to_bin")
+    if "value" not in params:
+        raise ValueError("gray expects: <sequence|bin_to_gray|gray_to_bin> <value>")
+
+    value = params.get("value")
+    if action == "sequence":
+        size = _parse_positive_int(value, "value")
+        return str(list(GrayCode(size).generate_gray()))
+    if action == "bin_to_gray":
+        token = _parse_binary_string(value, "value")
+        return str(bin_to_gray(token))
+    token = _parse_binary_string(value, "value")
+    return str(gray_to_bin(token))
+
+
 def _op_div(data: str, params: dict[str, Any]) -> str:
     _ensure_allowed_params(params, "div", {"var"})
     left, right = _parse_two_expressions(data, "div")
@@ -1403,6 +1535,9 @@ OP_HANDLERS = {
     "isprime": _op_isprime,
     "factorint": _op_factorint,
     "primerange": _op_primerange,
+    "perm_group": _op_perm_group,
+    "prufer": _op_prufer,
+    "gray": _op_gray,
 }
 
 

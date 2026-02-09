@@ -857,6 +857,146 @@ class ServerOperationTests(unittest.TestCase):
         }).get_json()
         self.assertIn("expects 2", dist_bad_arity_body["error"].lower())
 
+    def test_combinatorics_structure_ops_happy_paths(self):
+        perm_group_order_body = self.post_json("/op", {
+            "data": "[1,2,0]\n[1,0,2]",
+            "op": "perm_group",
+            "params": {"action": "order"},
+        }).get_json()
+        self.assertEqual(perm_group_order_body["error"], "")
+        self.assertEqual(perm_group_order_body["data"], "6")
+
+        perm_group_orbits_body = self.post_json("/op", {
+            "data": "[1,2,0]\n[1,0,2]",
+            "op": "perm_group",
+            "params": {"action": "orbits"},
+        }).get_json()
+        self.assertEqual(perm_group_orbits_body["error"], "")
+        self.assertIn("[0, 1, 2]", perm_group_orbits_body["data"])
+
+        perm_group_transitive_body = self.post_json("/op", {
+            "data": "[1,2,0]\n[1,0,2]",
+            "op": "perm_group",
+            "params": {"action": "is_transitive"},
+        }).get_json()
+        self.assertEqual(perm_group_transitive_body["error"], "")
+        self.assertEqual(perm_group_transitive_body["data"], "True")
+
+        perm_group_stabilizer_body = self.post_json("/op", {
+            "data": "[1,2,0]\n[1,0,2]",
+            "op": "perm_group",
+            "params": {"action": "stabilizer", "point": 0},
+        }).get_json()
+        self.assertEqual(perm_group_stabilizer_body["error"], "")
+        self.assertIn("order", perm_group_stabilizer_body["data"])
+        self.assertIn("2", perm_group_stabilizer_body["data"])
+
+        prufer_encode_body = self.post_json("/op", {
+            "data": "[0,1]\n[1,2]\n[1,3]",
+            "op": "prufer",
+            "params": {"action": "encode", "n": 4},
+        }).get_json()
+        self.assertEqual(prufer_encode_body["error"], "")
+        self.assertEqual(prufer_encode_body["data"], "[1, 1]")
+
+        prufer_decode_body = self.post_json("/op", {
+            "data": "[1,1]",
+            "op": "prufer",
+            "params": {"action": "decode"},
+        }).get_json()
+        self.assertEqual(prufer_decode_body["error"], "")
+        self.assertIn("[0, 1]", prufer_decode_body["data"])
+        self.assertIn("[1, 3]", prufer_decode_body["data"])
+
+        gray_sequence_body = self.post_json("/op", {
+            "data": "ignored",
+            "op": "gray",
+            "params": {"action": "sequence", "value": 3},
+        }).get_json()
+        self.assertEqual(gray_sequence_body["error"], "")
+        self.assertIn("000", gray_sequence_body["data"])
+        self.assertIn("111", gray_sequence_body["data"])
+
+        gray_bin_to_gray_body = self.post_json("/op", {
+            "data": "ignored",
+            "op": "gray",
+            "params": {"action": "bin_to_gray", "value": "1011"},
+        }).get_json()
+        self.assertEqual(gray_bin_to_gray_body["error"], "")
+        self.assertEqual(gray_bin_to_gray_body["data"], "1110")
+
+        gray_gray_to_bin_body = self.post_json("/op", {
+            "data": "ignored",
+            "op": "gray",
+            "params": {"action": "gray_to_bin", "value": "1110"},
+        }).get_json()
+        self.assertEqual(gray_gray_to_bin_body["error"], "")
+        self.assertEqual(gray_gray_to_bin_body["data"], "1011")
+
+    def test_combinatorics_structure_validation_errors(self):
+        perm_group_bad_action_body = self.post_json("/op", {
+            "data": "[1,2,0]\n[1,0,2]",
+            "op": "perm_group",
+            "params": {"action": "bad"},
+        }).get_json()
+        self.assertIn("action", perm_group_bad_action_body["error"].lower())
+
+        perm_group_bad_generator_body = self.post_json("/op", {
+            "data": "[1,2]\n[x,1]",
+            "op": "perm_group",
+            "params": {"action": "order"},
+        }).get_json()
+        self.assertIn("generator", perm_group_bad_generator_body["error"].lower())
+
+        perm_group_stabilizer_missing_point_body = self.post_json("/op", {
+            "data": "[1,2,0]\n[1,0,2]",
+            "op": "perm_group",
+            "params": {"action": "stabilizer"},
+        }).get_json()
+        self.assertIn("stabilizer", perm_group_stabilizer_missing_point_body["error"].lower())
+
+        prufer_encode_missing_n_body = self.post_json("/op", {
+            "data": "[0,1]\n[1,2]\n[1,3]",
+            "op": "prufer",
+            "params": {"action": "encode"},
+        }).get_json()
+        self.assertIn("encode", prufer_encode_missing_n_body["error"].lower())
+
+        prufer_encode_bad_edge_body = self.post_json("/op", {
+            "data": "[0,1,2]\n[1,3]",
+            "op": "prufer",
+            "params": {"action": "encode", "n": 4},
+        }).get_json()
+        self.assertIn("edges", prufer_encode_bad_edge_body["error"].lower())
+
+        prufer_decode_bad_code_body = self.post_json("/op", {
+            "data": "[1,a]",
+            "op": "prufer",
+            "params": {"action": "decode"},
+        }).get_json()
+        self.assertIn("integer", prufer_decode_bad_code_body["error"].lower())
+
+        gray_bad_action_body = self.post_json("/op", {
+            "data": "ignored",
+            "op": "gray",
+            "params": {"action": "bad", "value": "10"},
+        }).get_json()
+        self.assertIn("action", gray_bad_action_body["error"].lower())
+
+        gray_bad_binary_body = self.post_json("/op", {
+            "data": "ignored",
+            "op": "gray",
+            "params": {"action": "bin_to_gray", "value": "10a1"},
+        }).get_json()
+        self.assertIn("binary", gray_bad_binary_body["error"].lower())
+
+        gray_bad_size_body = self.post_json("/op", {
+            "data": "ignored",
+            "op": "gray",
+            "params": {"action": "sequence", "value": 0},
+        }).get_json()
+        self.assertIn("positive", gray_bad_size_body["error"].lower())
+
     def test_matrix_operations(self):
         matrix_text = "\\begin{bmatrix}1 & 2\\\\3 & 4\\end{bmatrix}"
 

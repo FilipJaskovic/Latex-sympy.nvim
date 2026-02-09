@@ -3,6 +3,24 @@
 Notable changes
 
 ===============================================================================
+0.9.0 release                                      *latex-sympy-0.9.0*
+
+- Added combinatorics structure operations to `:LatexSympyOp`:
+  `perm_group`, `prufer`, and `gray`.
+- `perm_group` supports:
+  `order`, `orbits`, `is_transitive`, and `stabilizer <point>`.
+- `prufer` supports:
+  `encode <n>` from selected edge list and `decode` from selected code list.
+- `gray` supports:
+  `sequence <n>`, `bin_to_gray <binary>`, and `gray_to_bin <binary>`.
+- Added strict validation for list-based combinatorics input contracts.
+- Expanded tests/manual examples and smoke completion checks for new operations.
+- Documentation reorganization for release:
+  - `README.md` now focuses on quick overview + quick install
+  - `doc.md` installation section now includes lazy.nvim, native packages, and LazyVim setup
+  - `FEATURES.md` is now the exhaustive feature reference with examples
+
+===============================================================================
 0.8.1 release                                      *latex-sympy-0.8.1*
 
 - Added `:LatexSympyPick[!]` command picker for discovering/running plugin

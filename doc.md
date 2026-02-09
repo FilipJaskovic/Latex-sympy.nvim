@@ -1,10 +1,11 @@
 # Latex-sympy.nvim Usage Guide
 
-This file is the full usage reference for the plugin.
+This file is the practical usage guide for the plugin.
 
-Use this doc when you want details (all commands, advanced op syntax, keymaps, config behavior, and troubleshooting).
+Use this doc when you want installation instructions, command syntax, keymaps, config behavior, and troubleshooting.
 
-For implemented vs planned feature status, see [`FEATURES.md`](FEATURES.md).
+- Full exhaustive feature reference (every implemented feature with examples): [`FEATURES.md`](FEATURES.md)
+- Manual end-to-end feature check file: [`tests/manual_feature_checks.tex`](tests/manual_feature_checks.tex)
 
 ## What this plugin does
 
@@ -23,43 +24,72 @@ It supports:
 - Python server starts on demand by default (`server_start_mode = "on_demand"`).
 - Startup message is shown once per session by default.
 
-## Install (lazy.nvim)
+## Installation
+
+### lazy.nvim (default)
 
 ```lua
 {
-  "owner/Latex-sympy.nvim",
+  "FilipJaskovic/Latex-sympy.nvim",
   ft = "tex",
-  opts = {
-    python = "python3",
-    auto_install = false,
-    port = 7395,
-    enable_python_eval = false,
-    notify_startup = true,
-    startup_notify_once = true,
-    notify_info = false,
-    server_start_mode = "on_demand",
-    timeout_ms = 5000,
-    preview_before_apply = false,
-    preview_max_chars = 160,
-    drop_stale_results = true,
-    default_keymaps = true,
-    keymap_prefix = "<leader>l",
-    normal_keymap_prefix = "<leader>x",
-    respect_existing_keymaps = true,
-    picker_backend = "vim_ui",
-    picker_select = nil,
-    picker_input = nil,
-    picker_filter_enabled = false,
-    picker_filter_prompt = "latex_sympy filter (optional):",
-    picker_show_unavailable = false,
-    picker_guided_args = "all",
-    picker_guided_args_allow_raw = true,
-    notify_success = true,
-    notify_success_max_chars = 120,
-  },
-  config = function(_, opts)
-    require("latex_sympy").setup(opts)
+  opts = {},
+}
+```
+
+If you want explicit setup:
+
+```lua
+{
+  "FilipJaskovic/Latex-sympy.nvim",
+  ft = "tex",
+  config = function()
+    require("latex_sympy").setup({})
   end,
+}
+```
+
+### Native Neovim packages (`pack/*`)
+
+Start package (auto-load):
+
+```bash
+git clone https://github.com/FilipJaskovic/Latex-sympy.nvim \
+  ~/.local/share/nvim/site/pack/plugins/start/Latex-sympy.nvim
+```
+
+Then in your `init.lua`:
+
+```lua
+require("latex_sympy").setup({})
+```
+
+Optional package (manual `packadd`):
+
+```bash
+git clone https://github.com/FilipJaskovic/Latex-sympy.nvim \
+  ~/.local/share/nvim/site/pack/plugins/opt/Latex-sympy.nvim
+```
+
+Then in your `init.lua`:
+
+```lua
+vim.cmd("packadd Latex-sympy.nvim")
+require("latex_sympy").setup({})
+```
+
+### LazyVim
+
+Create this file:
+
+- `~/.config/nvim/lua/plugins/latex-sympy.lua`
+
+Paste:
+
+```lua
+return {
+  "FilipJaskovic/Latex-sympy.nvim",
+  ft = "tex",
+  opts = {},
 }
 ```
 
@@ -207,6 +237,16 @@ Supported ops:
 - `partition <n>`
 - `subsets [k]`
   - selected text must be a finite set/list (or newline/semicolon-separated values)
+- `perm_group <order|orbits|is_transitive|stabilizer> [point]`
+  - selection must contain permutation generators split by newline/`;`
+  - each generator must use one-line notation, e.g. `[1,2,0]`
+  - `stabilizer` requires `point` (non-negative integer)
+- `prufer <encode|decode> [n]`
+  - `encode`: selection is tree edges (`[u,v]` per line), `n` is required
+  - `decode`: selection is one Prufer code list, e.g. `[1,1,3]`
+- `gray <sequence|bin_to_gray|gray_to_bin> <value>`
+  - `sequence`: `<value>` is bit width `n` (positive integer)
+  - `bin_to_gray` / `gray_to_bin`: `<value>` is a binary string
 - `totient`
 - `mobius`
 - `divisors [proper]`
@@ -481,6 +521,7 @@ Health check:
 Use:
 
 - `tests/manual_feature_checks.tex`
+- Full exhaustive command/feature reference: `FEATURES.md`
 
 It includes ready-to-run examples for:
 

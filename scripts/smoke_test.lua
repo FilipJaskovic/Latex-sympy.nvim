@@ -108,6 +108,9 @@ local function run_smoke()
   assert_true(vim.tbl_contains(op_completion, "isprime"), "completion must include isprime")
   assert_true(vim.tbl_contains(op_completion, "factorint"), "completion must include factorint")
   assert_true(vim.tbl_contains(op_completion, "primerange"), "completion must include primerange")
+  assert_true(vim.tbl_contains(op_completion, "perm_group"), "completion must include perm_group")
+  assert_true(vim.tbl_contains(op_completion, "prufer"), "completion must include prufer")
+  assert_true(vim.tbl_contains(op_completion, "gray"), "completion must include gray")
 
   -- Verify hard defaults that must remain stable.
   local cfg = mod_or_err.get_config()
