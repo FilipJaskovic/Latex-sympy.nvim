@@ -85,9 +85,7 @@ $$
 ### Advanced 1: Groebner Basis
 
 $$
-\left\{x^2 + y,\; x - y\right\}
-=
-\left\{x - y,\; y^2 + y\right\}
+\{x^2 + y,\; x - y\} = \{x - y,\; y^2 + y\}
 $$
 
 ```latex
@@ -101,14 +99,7 @@ x - y
 ### Advanced 2: Nonlinear System Solve
 
 $$
-\left\{
-\begin{aligned}
-x^2 - 1 &= 0 \\
-y - 2 &= 0
-\end{aligned}
-\right\}
-=
-\left\{(-1, 2),\; (1, 2)\right\}
+\{x^2 - 1 = 0,\; y - 2 = 0\} = \{(-1, 2),\; (1, 2)\}
 $$
 
 ```latex
@@ -127,11 +118,9 @@ $$
 6 & 3
 \end{bmatrix}
 =
-\left(
-L=\begin{bmatrix}1 & 0\\ \frac{3}{2} & 1\end{bmatrix},
-\;
+L\,U,\quad
+L=\begin{bmatrix}1 & 0\\ \frac{3}{2} & 1\end{bmatrix},\;
 U=\begin{bmatrix}4 & 3\\ 0 & -\frac{3}{2}\end{bmatrix}
-\right)
 $$
 
 ```latex
@@ -143,10 +132,8 @@ $$
 ### Advanced 4: Geometry Intersection
 
 $$
-\operatorname{Line}\!\left((0,0),(1,1)\right),\;
-\operatorname{Line}\!\left((0,1),(1,0)\right)
-=
-\left\{\left(\frac{1}{2},\frac{1}{2}\right)\right\}
+\mathrm{Line}((0,0),(1,1)) \cap \mathrm{Line}((0,1),(1,0))
+= \{(\tfrac{1}{2},\tfrac{1}{2})\}
 $$
 
 ```latex
