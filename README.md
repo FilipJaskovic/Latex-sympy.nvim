@@ -112,16 +112,11 @@ y - 2 = 0
 
 ### Advanced 3: LU Decomposition
 
-$$
-\begin{bmatrix}
-4 & 3 \\
-6 & 3
-\end{bmatrix}
-=
-L\,U,\quad
-L=\begin{bmatrix}1 & 0\\ \frac{3}{2} & 1\end{bmatrix},\;
-U=\begin{bmatrix}4 & 3\\ 0 & -\frac{3}{2}\end{bmatrix}
-$$
+```math
+A=\begin{bmatrix}4&3\\6&3\end{bmatrix}=LU,\quad
+L=\begin{bmatrix}1&0\\\frac{3}{2}&1\end{bmatrix},\quad
+U=\begin{bmatrix}4&3\\0&-\frac{3}{2}\end{bmatrix}
+```
 
 ```latex
 % Command: :LatexSympyOp! lu
