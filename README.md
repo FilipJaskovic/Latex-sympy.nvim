@@ -34,26 +34,150 @@ Use the manual test file:
 
 It contains ready-to-run selections for core commands, advanced ops, aliases, picker flow, and utilities.
 
-## Example LaTeX transformations
+## Example Workflows
+
+All examples below show append mode (`!`) so result is written after the original expression.
+
+### Core 1: Simplify
+
+$$
+x^2 + 2x + 1 = \left(x + 1\right)^2
+$$
 
 ```latex
-Input:  x^2 + 2x + 1
-Output: \left(x + 1\right)^{2}
+% Command: :LatexSympyOp! simplify
+x^2 + 2x + 1 = \left(x + 1\right)^2
 ```
 
-```latex
-Input:  \frac{d}{dx}(x^3 + x)
-Output: 3x^2 + 1
-```
+### Core 2: Derivative
+
+$$
+\frac{d}{dx}(x^3 + x) = 3x^2 + 1
+$$
 
 ```latex
-Input:  \int_0^1 x^2\,dx
-Output: \frac{1}{3}
+% Command: :LatexSympyOp! diff x
+\frac{d}{dx}(x^3 + x) = 3x^2 + 1
 ```
 
+### Core 3: Definite Integral
+
+$$
+\int_0^1 x^2\,dx = \frac{1}{3}
+$$
+
 ```latex
-Input:  \begin{bmatrix}1 & 2\\3 & 4\end{bmatrix}
-Output: -2
+% Command: :LatexSympyOp! integrate x 0 1
+\int_0^1 x^2\,dx = \frac{1}{3}
+```
+
+### Core 4: Limit
+
+$$
+\lim_{x \to 0}\frac{\sin(x)}{x} = 1
+$$
+
+```latex
+% Command: :LatexSympyOp! limit x 0 +-
+\frac{\sin(x)}{x} = 1
+```
+
+### Advanced 1: Groebner Basis
+
+$$
+\left\{x^2 + y,\; x - y\right\}
+=
+\left\{x - y,\; y^2 + y\right\}
+$$
+
+```latex
+% Command: :LatexSympyOp! groebner x y lex
+% Select both lines together
+x^2 + y
+x - y
+= \left\{x - y,\; y^2 + y\right\}
+```
+
+### Advanced 2: Nonlinear System Solve
+
+$$
+\left\{
+\begin{aligned}
+x^2 - 1 &= 0 \\
+y - 2 &= 0
+\end{aligned}
+\right\}
+=
+\left\{(-1, 2),\; (1, 2)\right\}
+$$
+
+```latex
+% Command: :LatexSympyOp! nonlinsolve x y
+% Select both lines together
+x^2 - 1 = 0
+y - 2 = 0
+= \left\{(-1, 2),\; (1, 2)\right\}
+```
+
+### Advanced 3: LU Decomposition
+
+$$
+\begin{bmatrix}
+4 & 3 \\
+6 & 3
+\end{bmatrix}
+=
+\left(
+L=\begin{bmatrix}1 & 0\\ \frac{3}{2} & 1\end{bmatrix},
+\;
+U=\begin{bmatrix}4 & 3\\ 0 & -\frac{3}{2}\end{bmatrix}
+\right)
+$$
+
+```latex
+% Command: :LatexSympyOp! lu
+\begin{bmatrix}4 & 3\\6 & 3\end{bmatrix}
+= \left(L=\begin{bmatrix}1 & 0\\ \frac{3}{2} & 1\end{bmatrix},\; U=\begin{bmatrix}4 & 3\\ 0 & -\frac{3}{2}\end{bmatrix}\right)
+```
+
+### Advanced 4: Geometry Intersection
+
+$$
+\operatorname{Line}\!\left((0,0),(1,1)\right),\;
+\operatorname{Line}\!\left((0,1),(1,0)\right)
+=
+\left\{\left(\frac{1}{2},\frac{1}{2}\right)\right\}
+$$
+
+```latex
+% Command: :LatexSympyOp! intersect
+% Select both lines together
+Line(Point(0, 0), Point(1, 1))
+Line(Point(0, 1), Point(1, 0))
+= \left\{\left(\frac{1}{2},\frac{1}{2}\right)\right\}
+```
+
+### Advanced 5: Probability (distribution + query)
+
+$$
+P(X > 0) = \frac{1}{2}
+$$
+
+```latex
+% Setup command: :LatexSympyOp dist normal X 0 1
+% Then append command: :LatexSympyOp! p
+X > 0 = \frac{1}{2}
+```
+
+### Advanced 6: Quantum Commutator
+
+$$
+A = AB - BA
+$$
+
+```latex
+% Command: :LatexSympyOp! quantum commutator B
+A = AB - BA
 ```
 
 ## More docs
